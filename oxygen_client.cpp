@@ -47,6 +47,10 @@ int main() {
             std::string num_Oxygen;
             std::getline(std::cin, num_Oxygen);
 
+            int O_max = std::stoi(num_Oxygen);
+            for (int i = 0; i < O_max; i++){
+                
+            }
             // std::cout << "Enter end point: ";
             // std::string endPoint;
             // std::getline(std::cin, endPoint);

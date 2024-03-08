@@ -47,6 +47,10 @@ int main() {
             std::string num_Hydrogen;
             std::getline(std::cin, num_Hydrogen);
 
+            int H_max = std::stoi(num_Hydrogen);
+            for (int i = 0; i < H_max; i++){
+                
+            }
             // std::cout << "Enter end point: ";
             // std::string endPoint;
             // std::getline(std::cin, endPoint);
