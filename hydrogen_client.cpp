@@ -48,8 +48,14 @@ int main() {
             std::getline(std::cin, num_Hydrogen);
 
             int H_max = std::stoi(num_Hydrogen);
-            for (int i = 0; i < H_max; i++){
-                
+
+            std::vector<std::string> hydrogen_List;
+            std::string H_symbol = "H"; 
+            for (int i = 1; i < H_max + 1; i++){
+                std::string converted  = std::to_string(i);
+                std::string combined = H_symbol.append(converted);
+                hydrogen_List.push_back(combined);
+                H_symbol = "H";
             }
             // std::cout << "Enter end point: ";
             // std::string endPoint;

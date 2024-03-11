@@ -48,9 +48,16 @@ int main() {
             std::getline(std::cin, num_Oxygen);
 
             int O_max = std::stoi(num_Oxygen);
-            for (int i = 0; i < O_max; i++){
-                
+
+            std::vector<std::string> oxygen_List;
+            std::string O_symbol = "O"; 
+            for (int i = 1; i < O_max + 1; i++){
+                std::string converted  = std::to_string(i);
+                std::string combined = O_symbol.append(converted);
+                oxygen_List.push_back(combined);
+                O_symbol = "O";
             }
+
             // std::cout << "Enter end point: ";
             // std::string endPoint;
             // std::getline(std::cin, endPoint);
