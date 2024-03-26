@@ -14,6 +14,13 @@ const int PORT = 6900;
 const int BUFFER_SIZE = 1024;
 const char* SERVER_ADDRESS = "127.0.0.1";
 
+struct Request {
+    string molecule_name;
+    string timestamp;
+    SOCKET clientSocket;
+    bool isBonded = false;
+};
+
 mutex hydrogenArrayMutex;
 mutex oxygenArrayMutex;
 
@@ -59,13 +66,6 @@ std::string getCurrentTime() {
     return std::string(buffer);
 }
 
-struct Request {
-    string molecule_name;
-    string timestamp;
-    SOCKET clientSocket;
-    bool isBonded = false;
-};
-
 string createLog(Request req) {
     string log;
     
@@ -84,6 +84,8 @@ void acceptClients(SOCKET serverSocket);
 void handleClients(SOCKET clientSocket, char* type);
 
 std::vector<std::pair<int,int>> getJobList(int start, int end, int numWorkers);
+
+void bondMolecules();
 
 class Semaphore {
 private:
@@ -311,6 +313,9 @@ void bondMolecules() {
         //cout << "Bonded: " << H1.molecule_name << " " << H2.molecule_name << " " << O.molecule_name << endl;
         // Make the logs for bonded atoms
         string log;
+        H1.isBonded = true;
+        H2.isBonded = true;
+        O.isBonded = true;
         log = createLog(H1);
         cout << log << endl;
         send(H1.clientSocket, log.c_str(), log.size(), 0);
