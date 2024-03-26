@@ -30,7 +30,7 @@ struct Request {
 
 void acceptClients(SOCKET serverSocket);
 
-void handleClients(SOCKET clientSocket);
+void handleClients(SOCKET clientSocket, char* type);
 
 std::vector<std::pair<int,int>> getJobList(int start, int end, int numWorkers);
 
@@ -91,6 +91,9 @@ int main() {
     std::thread acceptClientsThread(acceptClients, serverSocket);
     acceptClientsThread.detach();  // Detach the thread to allow it to run independently
 
+    std::thread bondMoleculesThread(bondMolecules);
+    bondMoleculesThread.detach();  // For handling bonding of molecules
+
     while(true) {
         std::cin >> str;
         std::cout << str;
@@ -131,11 +134,12 @@ void acceptClients(SOCKET serverSocket) {
         }
 
         // Handle the connection
-        
+        char* moleculeType;
 
         if(strcmp(buffer, "hydrogen") == 0){
             std::cout << "Accepted hydrogen connection from: " << inet_ntoa(clientAddr.sin_addr) << ":" << ntohs(clientAddr.sin_port) << std::endl;
-            std::thread clientThread(handleClients, clientSocket);
+            moleculeType = "hydrogen";
+            std::thread clientThread(handleClients, clientSocket, moleculeType);
             clientThread.detach();
             unique_lock<mutex> lock(hydrogenArrayMutex);
             hydrogenSockets.push_back(clientSocket);
@@ -144,7 +148,8 @@ void acceptClients(SOCKET serverSocket) {
             send(clientSocket, SERVER_ADDRESS, strlen(SERVER_ADDRESS), 0);
         }else if(strcmp(buffer, "oxygen") == 0){
             std::cout << "Accepted oxygen connection from: " << inet_ntoa(clientAddr.sin_addr) << ":" << ntohs(clientAddr.sin_port) << std::endl;
-            std::thread clientThread(handleClients, clientSocket);
+            moleculeType = "oxygen";
+            std::thread clientThread(handleClients, clientSocket, moleculeType);
             clientThread.detach();
             unique_lock<mutex> lock(oxygenArrayMutex);
             oxygenSockets.push_back(clientSocket);
@@ -155,11 +160,24 @@ void acceptClients(SOCKET serverSocket) {
     }
 }
 
-void handleClients(SOCKET slaveSocket){
+void handleClients(SOCKET clientSocket, char* type){
+    char buffer[BUFFER_SIZE] = {0};
     while(true){
         // Receive the size of the primes vector
-        int primesSize;
-        recv(slaveSocket, reinterpret_cast<char*>(&primesSize), sizeof(primesSize), 0);
-        
+        recv(clientSocket, buffer, sizeof(buffer) -  1, 0);
+        cout << buffer << endl;
+
+        if(strcmp(type, "hydrogen")){
+
+        } else if (strcmp(type, "oxygen")){
+
+        }
     }
 }
+
+void bondMolecules(){
+    while(true){
+
+    }
+}
+
