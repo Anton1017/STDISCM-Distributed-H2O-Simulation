@@ -23,16 +23,103 @@ vector<SOCKET> oxygenSockets;
 vector<Request> hydrogenRequests;
 vector<Request> oxygenRequests;
 
+std::string getCurrentDate() {
+    // Get the current time
+    auto now = std::chrono::system_clock::now();
+    
+    // Convert the current time to a time_t object
+    std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
+
+    // Convert the time_t object to a tm struct representing the current time
+    std::tm* timeInfo = std::localtime(&currentTime);
+    
+    // Format the date
+    char buffer[20]; // Buffer to store the formatted date
+    std::strftime(buffer, 20, "%Y-%m-%d", timeInfo);
+    
+    // Convert the buffer to a string
+    return std::string(buffer);
+}
+
+std::string getCurrentTime() {
+    // Get the current time
+    auto now = std::chrono::system_clock::now();
+    
+    // Convert the current time to a time_t object
+    std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
+
+    // Convert the time_t object to a tm struct representing the current time
+    std::tm* timeInfo = std::localtime(&currentTime);
+    
+    // Format the time
+    char buffer[9]; // Buffer to store the formatted time (HH:MM:SS)
+    std::strftime(buffer, 9, "%H:%M:%S", timeInfo);
+    
+    // Convert the buffer to a string
+    return std::string(buffer);
+}
+
 struct Request {
     string molecule_name;
     string timestamp;
+    SOCKET clientSocket;
+    bool isBonded = false;
 };
+
+string createLog(Request req) {
+    string log;
+    
+    if (req.isBonded) {
+        log = req.molecule_name + ", bonded, " + getCurrentDate() + getCurrentTime();
+    }
+    else {
+        log = req.molecule_name + ", request" + getCurrentDate() + getCurrentTime();
+    }
+
+    return log;
+}
 
 void acceptClients(SOCKET serverSocket);
 
 void handleClients(SOCKET clientSocket, char* type);
 
 std::vector<std::pair<int,int>> getJobList(int start, int end, int numWorkers);
+
+class Semaphore {
+private:
+    std::mutex mutex_;
+    std::condition_variable condition_;
+    size_t count_;
+
+public:
+    Semaphore(size_t count = 0) : count_(count) {}
+
+    void notify() {
+        std::unique_lock<std::mutex> lock(mutex_);
+        ++count_;
+        condition_.notify_one();
+    }
+
+    void wait() {
+        std::unique_lock<std::mutex> lock(mutex_);
+        while(count_ == 0) {
+            condition_.wait(lock);
+        }
+        --count_;
+    }
+
+    bool try_wait() {
+        std::unique_lock<std::mutex> lock(mutex_);
+        if(count_ > 0) {
+            --count_;
+            return true;
+        }
+        return false;
+    }
+};
+
+Semaphore H_semaphore = Semaphore(0);
+Semaphore O_semaphore = Semaphore(0);
 
 int main() {
     std::vector <int> primes;
@@ -146,7 +233,7 @@ void acceptClients(SOCKET serverSocket) {
             lock.unlock();
             // Send a message to the connected client
             send(clientSocket, SERVER_ADDRESS, strlen(SERVER_ADDRESS), 0);
-        }else if(strcmp(buffer, "oxygen") == 0){
+        } else if(strcmp(buffer, "oxygen") == 0){
             std::cout << "Accepted oxygen connection from: " << inet_ntoa(clientAddr.sin_addr) << ":" << ntohs(clientAddr.sin_port) << std::endl;
             moleculeType = "oxygen";
             std::thread clientThread(handleClients, clientSocket, moleculeType);
@@ -157,27 +244,86 @@ void acceptClients(SOCKET serverSocket) {
             // Send a message to the connected client
             send(clientSocket, SERVER_ADDRESS, strlen(SERVER_ADDRESS), 0);
         }
+
     }
 }
 
 void handleClients(SOCKET clientSocket, char* type){
     char buffer[BUFFER_SIZE] = {0};
+
     while(true){
-        // Receive the size of the primes vector
+
         recv(clientSocket, buffer, sizeof(buffer) -  1, 0);
         cout << buffer << endl;
 
-        if(strcmp(type, "hydrogen")){
+        // Is a hydrogen thread
+        if (strcmp(type, "hydrogen")){
+            string request = buffer;
+            string molecule_name = request.substr(0, request.find(","));
+            string timestamp = request.substr(3, request.size() - 1);
+            Request req = {molecule_name, timestamp, clientSocket};
 
-        } else if (strcmp(type, "oxygen")){
+            hydrogenArrayMutex.lock();
+            hydrogenRequests.push_back(req);
+            hydrogenArrayMutex.unlock();
 
+            if (hydrogenRequests.size() == 2){
+                H_semaphore.notify();
+                H_semaphore.notify();
+            }
+        } 
+
+        // Is an oxygen thread
+        else if (strcmp(type, "oxygen")){
+            string request = buffer;
+            string molecule_name = request.substr(0, request.find(","));
+            string timestamp = request.substr(3, request.size() - 1);
+            Request req = {molecule_name, timestamp, clientSocket};
+
+            oxygenArrayMutex.lock();
+            oxygenRequests.push_back(req);
+            oxygenArrayMutex.unlock();
+
+            if (oxygenRequests.size() == 1){
+                O_semaphore.notify();
+            }
         }
     }
 }
 
-void bondMolecules(){
+void bondMolecules() {
     while(true){
+        H_semaphore.wait();
+        H_semaphore.wait();
+        O_semaphore.wait();
 
+        hydrogenArrayMutex.lock();
+        Request H1 = hydrogenRequests[0];
+        Request H2 = hydrogenRequests[1];
+        hydrogenRequests.erase(hydrogenRequests.begin(), hydrogenRequests.begin() + 2);
+        hydrogenArrayMutex.unlock();
+
+        oxygenArrayMutex.lock();
+        Request O = oxygenRequests[0];
+        oxygenRequests.erase(oxygenRequests.begin());
+        oxygenArrayMutex.unlock();
+
+        //cout << "Bonded: " << H1.molecule_name << " " << H2.molecule_name << " " << O.molecule_name << endl;
+        // Make the logs for bonded atoms
+        string log;
+        log = createLog(H1);
+        cout << log << endl;
+        send(H1.clientSocket, log.c_str(), log.size(), 0);
+
+        log = createLog(H2);
+        cout << log << endl;
+        send(H2.clientSocket, log.c_str(), log.size(), 0);
+
+        log = createLog(O);
+        cout << log << endl;
+        send(O.clientSocket, log.c_str(), log.size(), 0);
     }
 }
+
+
 

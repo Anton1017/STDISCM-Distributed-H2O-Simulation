@@ -95,13 +95,13 @@ int main() {
             
             //Send the size of the list
             int oxygenListSize = oxygen_List.size();
-            send(sock, reinterpret_cast<char*>(&oxygenListSize), sizeof(oxygenListSize), 0);
+            //send(sock, reinterpret_cast<char*>(&oxygenListSize), sizeof(oxygenListSize), 0);
             //Send the list itself
             for(const std::string& oxygen : oxygen_List) {
                 std::string currTime = getCurrentTime();
                 std::string currDate = getCurrentDate();
-                std::string log = oxygen + ", request," +  currDate +", " + currTime;
-                std::cout << oxygen << ", request, " <<  currDate <<", " << currTime << std::endl;
+                std::string log = oxygen + ", request," +  currDate + currTime;
+                std::cout << oxygen << ", request, " <<  currDate << currTime << std::endl;
                 send(sock, log.c_str(), log.size(), 0);
             }
 

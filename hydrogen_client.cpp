@@ -99,14 +99,14 @@ int main() {
             //[H1, H2, ..., HN]
             //send the size of the list 
             int hydrogenListSize = hydrogen_List.size();
-            send(sock, reinterpret_cast<char*>(&hydrogenListSize), sizeof(hydrogenListSize), 0);
+            //send(sock, reinterpret_cast<char*>(&hydrogenListSize), sizeof(hydrogenListSize), 0);
 
             // send the list itself
             for(const std::string& hydrogen : hydrogen_List) {
                 std::string currTime = getCurrentTime();
                 std::string currDate = getCurrentDate();
-                std::string log = hydrogen + ", request," +  currDate +", " + currTime;
-                std::cout << hydrogen << ", request, " <<  currDate <<", " << currTime << std::endl;
+                std::string log = hydrogen + ", request," +  currDate + currTime;
+                std::cout << hydrogen << ", request, " <<  currDate << currTime << std::endl;
                 send(sock, log.c_str(), log.size(), 0);
             }
 
