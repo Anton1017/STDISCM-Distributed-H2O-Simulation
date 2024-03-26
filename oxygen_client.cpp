@@ -24,7 +24,7 @@ int main() {
     sockaddr_in serverAddress;
     serverAddress.sin_family = AF_INET;
     serverAddress.sin_port = htons(6900); // Port number
-    serverAddress.sin_addr.S_un.S_addr = inet_addr("172.24.198.250"); // IP address
+    serverAddress.sin_addr.S_un.S_addr = inet_addr("127.0.0.1"); // IP address
 
     if (connect(sock, (SOCKADDR*)&serverAddress, sizeof(serverAddress)) == SOCKET_ERROR) {
         std::cerr << "Connection failed: " << WSAGetLastError() << std::endl;
@@ -34,8 +34,8 @@ int main() {
     }
 
     //Send identifier as oxygen client 
-    std::string client = "oxygen client";
-    send(sock, client.c_str(), client.size(),  0);
+    std::string identifier = "oxygen";
+    send(sock, identifier.c_str(), identifier.size(),  0);
 
     //User input
     std::string temp;
@@ -57,6 +57,7 @@ int main() {
                 oxygen_List.push_back(combined);
                 O_symbol = "O";
             }
+            
             //Send the size of the list
             int oxygenListSize = oxygen_List.size();
             send(sock, reinterpret_cast<char*>(&oxygenListSize), sizeof(oxygenListSize), 0);

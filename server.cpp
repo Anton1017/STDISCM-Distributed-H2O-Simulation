@@ -12,7 +12,7 @@
 using namespace std;
 const int PORT = 6900;
 const int BUFFER_SIZE = 1024;
-const char* SERVER_ADDRESS = "172.24.169.169";
+const char* SERVER_ADDRESS = "127.0.0.1";
 
 mutex hydrogenArrayMutex;
 mutex oxygenArrayMutex;
@@ -126,8 +126,8 @@ void acceptClients(SOCKET serverSocket) {
         // Handle the connection
         
 
-        if(strcmp(buffer, "h") == 0){
-            std::cout << "Accepted slave connection from: " << inet_ntoa(clientAddr.sin_addr) << ":" << ntohs(clientAddr.sin_port) << std::endl;
+        if(strcmp(buffer, "hydrogen") == 0){
+            std::cout << "Accepted hydrogen connection from: " << inet_ntoa(clientAddr.sin_addr) << ":" << ntohs(clientAddr.sin_port) << std::endl;
             std::thread clientThread(handleClients, clientSocket);
             clientThread.detach();
             unique_lock<mutex> lock(hydrogenArrayMutex);
@@ -135,8 +135,8 @@ void acceptClients(SOCKET serverSocket) {
             lock.unlock();
             // Send a message to the connected client
             send(clientSocket, SERVER_ADDRESS, strlen(SERVER_ADDRESS), 0);
-        }else if(strcmp(buffer, "o") == 0){
-            std::cout << "Accepted slave connection from: " << inet_ntoa(clientAddr.sin_addr) << ":" << ntohs(clientAddr.sin_port) << std::endl;
+        }else if(strcmp(buffer, "oxygen") == 0){
+            std::cout << "Accepted oxygen connection from: " << inet_ntoa(clientAddr.sin_addr) << ":" << ntohs(clientAddr.sin_port) << std::endl;
             std::thread clientThread(handleClients, clientSocket);
             clientThread.detach();
             unique_lock<mutex> lock(oxygenArrayMutex);
