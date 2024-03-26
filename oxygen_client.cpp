@@ -100,10 +100,10 @@ int main() {
             for(const std::string& oxygen : oxygen_List) {
                 std::string currTime = getCurrentTime();
                 std::string currDate = getCurrentDate();
+                std::string log = oxygen + ", request," +  currDate +", " + currTime;
                 std::cout << oxygen << ", request, " <<  currDate <<", " << currTime << std::endl;
-                send(sock, oxygen.c_str(), oxygen.size(), 0);
+                send(sock, log.c_str(), log.size(), 0);
             }
-
 
             // std::cout << "Enter end point: ";
             // std::string endPoint;
