@@ -41,7 +41,7 @@ std::string getCurrentTime() {
     // Convert the buffer to a string
     return std::string(buffer);
 }
-void recieveLogs(SOCKET sock);
+void receiveLogs(SOCKET sock);
 
 
 int main() {
@@ -76,8 +76,8 @@ int main() {
     std::string identifier = "oxygen";
     send(sock, identifier.c_str(), identifier.size(),  0);
     
-    std::thread recieveLogsthread(recieveLogs, sock);
-    recieveLogsthread.detach(); 
+    std::thread receiveLogsthread(receiveLogs, sock);
+    receiveLogsthread.detach(); 
     //User input
     std::string temp;
     char buffer[1024] = {0};
@@ -145,7 +145,7 @@ int main() {
 
     return 0;
 }
-void recieveLogs(SOCKET sock){
+void receiveLogs(SOCKET sock){
     char buffer[1024] = {0};
     recv(sock, buffer,  1024,  0);
     std::cout << buffer << std::endl;

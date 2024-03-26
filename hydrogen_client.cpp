@@ -42,7 +42,7 @@ std::string getCurrentTime() {
     // Convert the buffer to a string
     return std::string(buffer);
 }
-void recieveLogs(SOCKET sock);
+void receiveLogs(SOCKET sock);
 int main() {
 
     WSADATA wsaData;
@@ -75,8 +75,8 @@ int main() {
     std::string identifier = "hydrogen";
     send(sock, identifier.c_str(), identifier.size(),  0);
 
-    std::thread recieveLogsthread(recieveLogs, sock);
-    recieveLogsthread.detach(); 
+    std::thread receiveLogsthread(receiveLogs, sock);
+    receiveLogsthread.detach(); 
 
     //User input
     std::string temp;
@@ -84,8 +84,6 @@ int main() {
     while (std::getline(std::cin, temp))
     {
         if (temp != "Exit") {
-            recv(sock, buffer,  1024,  0);
-            std::cout << "Server: " << buffer << std::endl;
             std::cout << "Enter number of hydrogen: ";
             std::string num_Hydrogen;
             std::getline(std::cin, num_Hydrogen);
@@ -148,7 +146,7 @@ int main() {
     return 0;
 }
 
-void recieveLogs(SOCKET sock){
+void receiveLogs(SOCKET sock){
     char buffer[1024] = {0};
     recv(sock, buffer,  1024,  0);
     std::cout << buffer << std::endl;
