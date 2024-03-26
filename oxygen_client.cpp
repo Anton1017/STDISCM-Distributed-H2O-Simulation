@@ -5,6 +5,41 @@
 #include <ws2tcpip.h>
 #include <vector>
 #include <string>
+#include <ctime>
+std::string getCurrentDate() {
+    // Get the current time
+    auto now = std::chrono::system_clock::now();
+    
+    // Convert the current time to a time_t object
+    std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
+
+    // Convert the time_t object to a tm struct representing the current time
+    std::tm* timeInfo = std::localtime(&currentTime);
+    
+    // Format the date
+    char buffer[20]; // Buffer to store the formatted date
+    std::strftime(buffer, 20, "%Y-%m-%d", timeInfo);
+    
+    // Convert the buffer to a string
+    return std::string(buffer);
+}
+std::string getCurrentTime() {
+    // Get the current time
+    auto now = std::chrono::system_clock::now();
+    
+    // Convert the current time to a time_t object
+    std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
+
+    // Convert the time_t object to a tm struct representing the current time
+    std::tm* timeInfo = std::localtime(&currentTime);
+    
+    // Format the time
+    char buffer[9]; // Buffer to store the formatted time (HH:MM:SS)
+    std::strftime(buffer, 9, "%H:%M:%S", timeInfo);
+    
+    // Convert the buffer to a string
+    return std::string(buffer);
+}
 int main() {
 
     WSADATA wsaData;
@@ -63,6 +98,9 @@ int main() {
             send(sock, reinterpret_cast<char*>(&oxygenListSize), sizeof(oxygenListSize), 0);
             //Send the list itself
             for(const std::string& oxygen : oxygen_List) {
+                std::string currTime = getCurrentTime();
+                std::string currDate = getCurrentDate();
+                std::cout << oxygen << ", request, " <<  currDate <<", " << currTime << std::endl;
                 send(sock, oxygen.c_str(), oxygen.size(), 0);
             }
 
