@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <ctime>
+#include <thread>
 std::string getCurrentDate() {
     // Get the current time
     auto now = std::chrono::system_clock::now();
@@ -41,6 +42,7 @@ std::string getCurrentTime() {
     // Convert the buffer to a string
     return std::string(buffer);
 }
+void recieveLogs(SOCKET sock);
 int main() {
 
     WSADATA wsaData;
@@ -73,6 +75,9 @@ int main() {
     std::string identifier = "hydrogen";
     send(sock, identifier.c_str(), identifier.size(),  0);
 
+    std::thread recieveLogsthread(recieveLogs, sock);
+    recieveLogsthread.detach(); 
+
     //User input
     std::string temp;
     char buffer[1024] = {0};
@@ -95,8 +100,6 @@ int main() {
                 hydrogen_List.push_back(combined);
                 H_symbol = "H";
             }
-            //"H0 H1 H2 ... HN"
-            //[H1, H2, ..., HN]
             //send the size of the list 
             int hydrogenListSize = hydrogen_List.size();
             //send(sock, reinterpret_cast<char*>(&hydrogenListSize), sizeof(hydrogenListSize), 0);
@@ -109,7 +112,6 @@ int main() {
                 std::cout << hydrogen << ", request, " <<  currDate << currTime << std::endl;
                 send(sock, log.c_str(), log.size(), 0);
             }
-
 
             // std::cout << "Enter end point: ";
             // std::string endPoint;
@@ -144,4 +146,10 @@ int main() {
     WSACleanup();
 
     return 0;
+}
+
+void recieveLogs(SOCKET sock){
+    char buffer[1024] = {0};
+    recv(sock, buffer,  1024,  0);
+    std::cout << buffer << std::endl;
 }
