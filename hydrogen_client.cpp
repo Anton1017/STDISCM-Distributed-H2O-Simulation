@@ -57,6 +57,15 @@ int main() {
                 hydrogen_List.push_back(combined);
                 H_symbol = "H";
             }
+            //send the size of the list 
+            int hydrogenListSize = hydrogen_List.size();
+            send(sock, reinterpret_cast<char*>(&hydrogenListSize), sizeof(hydrogenListSize), 0);
+
+            // send the list itself
+            for(const std::string& hydrogen : hydrogen_List) {
+                send(sock, hydrogen.c_str(), hydrogen.size(), 0);
+            }
+
             // std::cout << "Enter end point: ";
             // std::string endPoint;
             // std::getline(std::cin, endPoint);

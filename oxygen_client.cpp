@@ -57,6 +57,14 @@ int main() {
                 oxygen_List.push_back(combined);
                 O_symbol = "O";
             }
+            //Send the size of the list
+            int oxygenListSize = oxygen_List.size();
+            send(sock, reinterpret_cast<char*>(&oxygenListSize), sizeof(oxygenListSize), 0);
+            //Send the list itself
+            for(const std::string& oxygen : oxygen_List) {
+                send(sock, oxygen.c_str(), oxygen.size(), 0);
+            }
+
 
             // std::cout << "Enter end point: ";
             // std::string endPoint;
