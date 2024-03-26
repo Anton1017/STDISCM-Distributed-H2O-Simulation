@@ -146,6 +146,7 @@ int main() {
     return 0;
 }
 void receiveLogs(SOCKET sock){
+    std::cout <<"Went to receivelogs"<<std::endl;
     char buffer[1024] = {0};
     recv(sock, buffer,  1024,  0);
     std::cout << buffer << std::endl;

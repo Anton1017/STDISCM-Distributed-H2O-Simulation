@@ -259,7 +259,7 @@ void handleClients(SOCKET clientSocket, char* type){
         cout << buffer << endl;
 
         // Is a hydrogen thread
-        if (strcmp(type, "hydrogen")){
+        if (strcmp(type, "hydrogen") == 0 ){
             string request = buffer;
             string molecule_name = request.substr(0, request.find(","));
             string timestamp = request.substr(3, request.size() - 1);
@@ -269,14 +269,14 @@ void handleClients(SOCKET clientSocket, char* type){
             hydrogenRequests.push_back(req);
             hydrogenArrayMutex.unlock();
 
-            if (hydrogenRequests.size() == 2){
+            if (hydrogenRequests.size() >= 2){
                 H_semaphore.notify();
                 H_semaphore.notify();
             }
         } 
 
         // Is an oxygen thread
-        else if (strcmp(type, "oxygen")){
+        else if (strcmp(type, "oxygen") == 0){
             string request = buffer;
             string molecule_name = request.substr(0, request.find(","));
             string timestamp = request.substr(3, request.size() - 1);
@@ -286,10 +286,10 @@ void handleClients(SOCKET clientSocket, char* type){
             oxygenRequests.push_back(req);
             oxygenArrayMutex.unlock();
 
-            if (oxygenRequests.size() == 1){
+            if (oxygenRequests.size() >= 1){
                 O_semaphore.notify();
             }
-        }
+        }   
     }
 }
 
