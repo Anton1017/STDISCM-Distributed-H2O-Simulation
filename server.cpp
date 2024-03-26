@@ -17,9 +17,16 @@ const char* SERVER_ADDRESS = "127.0.0.1";
 mutex hydrogenArrayMutex;
 mutex oxygenArrayMutex;
 
-
 vector<SOCKET> hydrogenSockets;
 vector<SOCKET> oxygenSockets;
+
+vector<Request> hydrogenRequests;
+vector<Request> oxygenRequests;
+
+struct Request {
+    string molecule_name;
+    string timestamp;
+};
 
 void acceptClients(SOCKET serverSocket);
 
