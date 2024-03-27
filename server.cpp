@@ -268,13 +268,14 @@ void handleClients(SOCKET clientSocket, char* type){
             std::unique_lock<mutex> HArrayLock(hydrogenArrayMutex);
             cout << "I'm holding the hydrogen mutex now...\n";
             hydrogenRequests.push_back(req);
-            HArrayLock.unlock();
+            
             cout << "I'm not holding the hydrogen mutex anymore...\n";
 
             if (hydrogenRequests.size() >= 2){
                 H_semaphore.notify();
                 H_semaphore.notify();
             }
+            HArrayLock.unlock();
         } 
 
         // Is an oxygen thread
@@ -288,12 +289,13 @@ void handleClients(SOCKET clientSocket, char* type){
             std::unique_lock<mutex> OArrayLock(oxygenArrayMutex);
             cout << "I'm holding the oxygen mutex now...\n";
             oxygenRequests.push_back(req);
-            OArrayLock.unlock();
+            
             cout << "I'm not holding the oxygen mutex anymore...\n";
 
             if (oxygenRequests.size() >= 1){
                 O_semaphore.notify();
             }
+            OArrayLock.unlock();
         }   
     }
 }
