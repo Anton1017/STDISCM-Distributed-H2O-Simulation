@@ -73,7 +73,7 @@ string createLog(Request req) {
         log = req.molecule_name + ", bonded, " + getCurrentDate() + getCurrentTime();
     }
     else {
-        log = req.molecule_name + ", request" + getCurrentDate() + getCurrentTime();
+        log = req.molecule_name + ", request, " + getCurrentDate() + getCurrentTime();
     }
 
     return log;

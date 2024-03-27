@@ -113,7 +113,7 @@ int main() {
             for(const std::string& oxygen : oxygen_List) {
                 std::string currTime = getCurrentTime();
                 std::string currDate = getCurrentDate();
-                std::string log = oxygen + ", request," +  currDate + " " + currTime;
+                std::string log = oxygen + ", request, " +  currDate + " " + currTime;
                 std::cout << log << std::endl;
                 send(sock, log.c_str(), log.size(), 0);
             }
