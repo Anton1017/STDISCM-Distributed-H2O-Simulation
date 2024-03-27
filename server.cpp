@@ -265,9 +265,11 @@ void handleClients(SOCKET clientSocket, char* type){
             string timestamp = request.substr(3, request.size() - 1);
             Request req = {molecule_name, timestamp, clientSocket};
 
-            hydrogenArrayMutex.lock();
+            std::unique_lock<mutex> HArrayLock(hydrogenArrayMutex);
+            cout << "I'm holding the hydrogen mutex now...\n";
             hydrogenRequests.push_back(req);
-            hydrogenArrayMutex.unlock();
+            HArrayLock.unlock();
+            cout << "I'm not holding the hydrogen mutex anymore...\n";
 
             if (hydrogenRequests.size() >= 2){
                 H_semaphore.notify();
@@ -282,9 +284,12 @@ void handleClients(SOCKET clientSocket, char* type){
             string timestamp = request.substr(3, request.size() - 1);
             Request req = {molecule_name, timestamp, clientSocket};
 
-            oxygenArrayMutex.lock();
+            
+            std::unique_lock<mutex> OArrayLock(oxygenArrayMutex);
+            cout << "I'm holding the oxygen mutex now...\n";
             oxygenRequests.push_back(req);
-            oxygenArrayMutex.unlock();
+            OArrayLock.unlock();
+            cout << "I'm not holding the oxygen mutex anymore...\n";
 
             if (oxygenRequests.size() >= 1){
                 O_semaphore.notify();
@@ -296,19 +301,22 @@ void handleClients(SOCKET clientSocket, char* type){
 void bondMolecules() {
     while(true){
         H_semaphore.wait();
+        cout << "Waiting for first H...\n";
         H_semaphore.wait();
+        cout << "Waiting for second H...\n";
         O_semaphore.wait();
+        cout << "Waiting for an O...\n";
 
-        hydrogenArrayMutex.lock();
+        std::unique_lock<mutex> HArrayLock(hydrogenArrayMutex);
         Request H1 = hydrogenRequests[0];
         Request H2 = hydrogenRequests[1];
         hydrogenRequests.erase(hydrogenRequests.begin(), hydrogenRequests.begin() + 2);
-        hydrogenArrayMutex.unlock();
+        HArrayLock.unlock();
 
-        oxygenArrayMutex.lock();
+        std::unique_lock<mutex> OArrayLock(oxygenArrayMutex);
         Request O = oxygenRequests[0];
         oxygenRequests.erase(oxygenRequests.begin());
-        oxygenArrayMutex.unlock();
+        OArrayLock.unlock();
 
         //cout << "Bonded: " << H1.molecule_name << " " << H2.molecule_name << " " << O.molecule_name << endl;
         // Make the logs for bonded atoms
