@@ -8,8 +8,11 @@
 #include <vector>
 #include <algorithm>
 #include <future>
+
 #pragma comment(lib, "ws2_32.lib")
+
 using namespace std;
+
 const int PORT = 6900;
 const int BUFFER_SIZE = 1024;
 const char* SERVER_ADDRESS = "127.0.0.1";
@@ -82,6 +85,8 @@ string createLog(Request req) {
 void acceptClients(SOCKET serverSocket);
 
 void handleClients(SOCKET clientSocket, char* type);
+void handleHydrogenClient(SOCKET clientSocket);
+void handleOxygenClient(SOCKET clientSocket);
 
 std::vector<std::pair<int,int>> getJobList(int start, int end, int numWorkers);
 
@@ -124,7 +129,6 @@ Semaphore H_semaphore = Semaphore(0);
 Semaphore O_semaphore = Semaphore(0);
 
 int main() {
-    std::vector <int> primes;
     char buffer[BUFFER_SIZE] = {0};
     int start, end, numThreads;
     
@@ -228,21 +232,19 @@ void acceptClients(SOCKET serverSocket) {
         if(strcmp(buffer, "hydrogen") == 0){
             std::cout << "Accepted hydrogen connection from: " << inet_ntoa(clientAddr.sin_addr) << ":" << ntohs(clientAddr.sin_port) << std::endl;
             moleculeType = "hydrogen";
-            std::thread clientThread(handleClients, clientSocket, moleculeType);
-            clientThread.detach();
-            unique_lock<mutex> lock(hydrogenArrayMutex);
+            std::thread hydrogenClientThread(handleHydrogenClient, clientSocket);
+            hydrogenClientThread.detach();
             hydrogenSockets.push_back(clientSocket);
-            lock.unlock();
+
             // Send a message to the connected client
             send(clientSocket, SERVER_ADDRESS, strlen(SERVER_ADDRESS), 0);
         } else if(strcmp(buffer, "oxygen") == 0){
             std::cout << "Accepted oxygen connection from: " << inet_ntoa(clientAddr.sin_addr) << ":" << ntohs(clientAddr.sin_port) << std::endl;
             moleculeType = "oxygen";
-            std::thread clientThread(handleClients, clientSocket, moleculeType);
-            clientThread.detach();
-            unique_lock<mutex> lock(oxygenArrayMutex);
+            std::thread oxygenClientThread(handleOxygenClient, clientSocket);
+            oxygenClientThread.detach();
             oxygenSockets.push_back(clientSocket);
-            lock.unlock();
+            
             // Send a message to the connected client
             send(clientSocket, SERVER_ADDRESS, strlen(SERVER_ADDRESS), 0);
         }
@@ -284,7 +286,6 @@ void handleClients(SOCKET clientSocket, char* type){
             string molecule_name = request.substr(0, request.find(","));
             string timestamp = request.substr(3, request.size() - 1);
             Request req = {molecule_name, timestamp, clientSocket};
-
             
             std::unique_lock<mutex> OArrayLock(oxygenArrayMutex);
             cout << "I'm holding the oxygen mutex now...\n";
@@ -298,6 +299,63 @@ void handleClients(SOCKET clientSocket, char* type){
             OArrayLock.unlock();
         }   
     }
+}
+
+void handleHydrogenClient(SOCKET clientSocket){
+    char buffer[BUFFER_SIZE] = {0};
+
+    while(true){
+
+        recv(clientSocket, buffer, sizeof(buffer) -  1, 0);
+        cout << "just received a new request\n";
+        cout << buffer << endl;
+
+        string request = buffer;
+        string molecule_name = request.substr(0, request.find(","));
+        string timestamp = request.substr(3, request.size() - 1);
+        Request req = {molecule_name, timestamp, clientSocket};
+        cout << "Received new hydrogen request!\n" << endl;
+        std::unique_lock<mutex> HArrayLock(hydrogenArrayMutex);
+        cout << "I'm holding the hydrogen mutex now...\n";
+        hydrogenRequests.push_back(req);
+        
+        cout << "I'm not holding the hydrogen mutex anymore...\n";
+
+        if (hydrogenRequests.size() >= 2){
+            H_semaphore.notify();
+            H_semaphore.notify();
+        }
+        HArrayLock.unlock();
+        
+    }
+}
+
+void handleOxygenClient(SOCKET clientSocket){
+    char buffer[BUFFER_SIZE] = {0};
+
+    while(true){
+
+        recv(clientSocket, buffer, sizeof(buffer) -  1, 0);
+        cout << buffer << endl;
+
+        string request = buffer;
+        string molecule_name = request.substr(0, request.find(","));
+        string timestamp = request.substr(3, request.size() - 1);
+        Request req = {molecule_name, timestamp, clientSocket};
+        cout << "Received new oxygen request!\n" << endl;
+        
+        std::unique_lock<mutex> OArrayLock(oxygenArrayMutex);
+        cout << "I'm holding the oxygen mutex now...\n";
+        oxygenRequests.push_back(req);
+        
+        cout << "I'm not holding the oxygen mutex anymore...\n";
+
+        if (oxygenRequests.size() >= 1){
+            O_semaphore.notify();
+        }
+        OArrayLock.unlock();
+    }  
+    
 }
 
 void bondMolecules() {
