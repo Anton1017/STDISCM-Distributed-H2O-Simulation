@@ -7,6 +7,11 @@
 #include <string>
 #include <ctime>
 #include <thread>
+
+const int PORT = 6900;
+const int BUFFER_SIZE = 1024;
+const char* SERVER_ADDRESS = "127.0.0.1";
+
 std::string getCurrentDate() {
     // Get the current time
     auto now = std::chrono::system_clock::now();
@@ -42,7 +47,9 @@ std::string getCurrentTime() {
     // Convert the buffer to a string
     return std::string(buffer);
 }
+
 void receiveLogs(SOCKET sock);
+
 int main() {
 
     WSADATA wsaData;
@@ -61,8 +68,8 @@ int main() {
 
     sockaddr_in serverAddress;
     serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(6900); // Port number
-    serverAddress.sin_addr.S_un.S_addr = inet_addr("127.0.0.1"); // IP address
+    serverAddress.sin_port = htons(PORT); // Port number
+    serverAddress.sin_addr.S_un.S_addr = inet_addr(SERVER_ADDRESS); // IP address
 
     if (connect(sock, (SOCKADDR*)&serverAddress, sizeof(serverAddress)) == SOCKET_ERROR) {
         std::cerr << "Connection failed: " << WSAGetLastError() << std::endl;
@@ -147,8 +154,10 @@ int main() {
 }
 
 void receiveLogs(SOCKET sock){
-    std::cout <<"Went to receivelogs"<<std::endl;
-    char buffer[1024] = {0};
-    recv(sock, buffer, sizeof(buffer) -  1, 0);
-    std::cout << buffer << std::endl;
+    while (true) {
+        //std::cout << "Listening for server responses: " << std::endl;
+        char buffer[1024] = {0};
+        recv(sock, buffer, sizeof(buffer) -  1, 0);
+        std::cout << buffer << std::endl;
+    }
 }
