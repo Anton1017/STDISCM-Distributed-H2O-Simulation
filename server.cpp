@@ -310,11 +310,9 @@ void handleHydrogenClient(SOCKET clientSocket){
     while(true){
         std::unique_lock<std::mutex> lock(socketMutex);
         recv(clientSocket, buffer, sizeof(buffer) -  1, 0);
-        lock.unlock();
-
         std::cout << "just received a new request\n";
         std::cout << buffer << endl;
-
+        lock.unlock();
         string request = buffer;
         string molecule_name = request.substr(0, request.find(","));
         string timestamp = request.substr(3, request.size() - 1);
@@ -324,13 +322,13 @@ void handleHydrogenClient(SOCKET clientSocket){
         std::cout << "I'm holding the hydrogen mutex now...\n";
         hydrogenRequests.push_back(req);
         
-        std::cout << "I'm not holding the hydrogen mutex anymore...\n";
+         std::cout << "I'm not holding the hydrogen mutex anymore...\n";
 
-        if (hydrogenRequests.size() >= 2){
-            H_semaphore.notify();
-            H_semaphore.notify();
-        }
-        HArrayLock.unlock();
+         if (hydrogenRequests.size() >= 2){
+             H_semaphore.notify();
+             H_semaphore.notify();
+         }
+         HArrayLock.unlock();
         
     }
 }
@@ -342,10 +340,10 @@ void handleOxygenClient(SOCKET clientSocket){
         
         std::unique_lock<std::mutex> lock(socketMutex);
         recv(clientSocket, buffer, sizeof(buffer) -  1, 0);
-        lock.unlock();
+        
 
         std::cout << buffer << endl;
-
+        lock.unlock();
         // string request = buffer;
         // string molecule_name = request.substr(0, request.find(","));
         // string timestamp = request.substr(3, request.size() - 1);

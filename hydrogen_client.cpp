@@ -104,16 +104,15 @@ int main() {
                 std::string currDate = getCurrentDate();
                 std::string log = hydrogen + ", request, " + currDate + " " + currTime;
                 std::cout << log << std::endl;
-                    std::unique_lock<std::mutex> lock(socketMutex);//ock the mutex for socket operations
-                    send(sock, log.c_str(), log.size(), 0);
-                    lock.unlock();
+                std::unique_lock<std::mutex> lock(socketMutex);//ock the mutex for socket operations
+                send(sock, log.c_str(), log.size(), 0);
+                lock.unlock();
         
             }
         } else {
-            {
-                std::lock_guard<std::mutex> lock(socketMutex); // Lock the mutex for socket operations
+            
                 send(sock, temp.c_str(), temp.size(), 0);
-            }
+            
             break;
         }
     }
