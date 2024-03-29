@@ -7,11 +7,12 @@
 #include <string>
 #include <ctime>
 #include <thread>
+#include <mutex>
 
 const int PORT = 6900;
 const int BUFFER_SIZE = 1024;
 const char* SERVER_ADDRESS = "127.0.0.1";
-
+std::mutex socketMutex;
 std::string getCurrentDate() {
     // Get the current time
     auto now = std::chrono::system_clock::now();
@@ -115,6 +116,7 @@ int main() {
                 std::string currDate = getCurrentDate();
                 std::string log = oxygen + ", request, " +  currDate + " " + currTime;
                 std::cout << log << std::endl;
+                std::lock_guard<std::mutex> lock(socketMutex);
                 send(sock, log.c_str(), strlen(log.c_str()), 0);
             }
 
