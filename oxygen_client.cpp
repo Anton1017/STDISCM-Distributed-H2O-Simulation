@@ -116,8 +116,9 @@ int main() {
                 std::string currDate = getCurrentDate();
                 std::string log = oxygen + ", request, " +  currDate + " " + currTime;
                 std::cout << log << std::endl;
-                std::lock_guard<std::mutex> lock(socketMutex);
+                std::unique_lock<std::mutex> lock(socketMutex);//ock the mutex for socket operations
                 send(sock, log.c_str(), strlen(log.c_str()), 0);
+                lock.unlock();
             }
 
             // std::cout << "Enter end point: ";

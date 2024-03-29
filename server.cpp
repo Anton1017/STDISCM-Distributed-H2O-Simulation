@@ -278,7 +278,7 @@ void handleClients(SOCKET clientSocket, char* type){
 
             if (hydrogenRequests.size() >= 2){
                 H_semaphore.notify();
-                H_semaphore.notify();
+                //H_semaphore.notify();
             }
             HArrayLock.unlock();
         } 
@@ -344,22 +344,21 @@ void handleOxygenClient(SOCKET clientSocket){
 
         std::cout << buffer << endl;
         lock.unlock();
-        // string request = buffer;
-        // string molecule_name = request.substr(0, request.find(","));
-        // string timestamp = request.substr(3, request.size() - 1);
-        // Request req = {molecule_name, timestamp, clientSocket};
-        // std::cout << "Received new oxygen request!\n" << endl;
+         string request = buffer;
+         string molecule_name = request.substr(0, request.find(","));
+         string timestamp = request.substr(3, request.size() - 1);
+         Request req = {molecule_name, timestamp, clientSocket};
+         std::cout << "Received new oxygen request!\n" << endl;
         
-        // std::unique_lock<mutex> OArrayLock(oxygenArrayMutex);
-        // std::cout << "I'm holding the oxygen mutex now...\n";
-        // oxygenRequests.push_back(req);
-        
-        // std::cout << "I'm not holding the oxygen mutex anymore...\n";
+         std::unique_lock<mutex> OArrayLock(oxygenArrayMutex);
+         std::cout << "I'm holding the oxygen mutex now...\n";
+         oxygenRequests.push_back(req);
+         std::cout << "I'm not holding the oxygen mutex anymore...\n";
 
-        // if (oxygenRequests.size() >= 1){
-        //     O_semaphore.notify();
-        // }
-        // OArrayLock.unlock();
+         if (oxygenRequests.size() >= 1){
+             O_semaphore.notify();
+         }
+         OArrayLock.unlock();
     }  
     
 }
