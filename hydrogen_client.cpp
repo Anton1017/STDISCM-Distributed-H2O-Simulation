@@ -7,10 +7,17 @@
 #include <string>
 #include <ctime>
 #include <thread>
+#include <mutex>
+#include <future>
+
+using namespace std;
 
 const int PORT = 6900;
 const int BUFFER_SIZE = 1024;
 const char* SERVER_ADDRESS = "127.0.0.1";
+
+mutex buffMutex;
+std::condition_variable buffCv;
 
 std::string getCurrentDate() {
     // Get the current time
@@ -116,7 +123,7 @@ int main() {
                 std::string log = hydrogen + ", request, " +  currDate + " " + currTime;
                 std::cout << log << std::endl;
                 send(sock, log.c_str(), strlen(log.c_str()), 0);
-                // std::this_thread::sleep_for(std::chrono::milliseconds(1)); // Delay sending to prevent server overload
+                buffMutex.lock();
             }
 
             // std::cout << "Enter end point: ";
@@ -159,6 +166,10 @@ void receiveLogs(SOCKET sock){
         //std::cout << "Listening for server responses: " << std::endl;
         char buffer[1024] = {0};
         recv(sock, buffer, sizeof(buffer) -  1, 0);
-        std::cout << buffer << std::endl;
+        if(strcmp(buffer, "ACK"))
+            std::cout << buffer << std::endl;
+        else{
+            buffMutex.unlock();
+        }
     }
 }

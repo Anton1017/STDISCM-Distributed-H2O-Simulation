@@ -13,6 +13,7 @@
 
 using namespace std;
 
+const string ACK = "ACK";
 const int PORT = 6900;
 const char* SERVER_ADDRESS = "127.0.0.1";
 
@@ -324,7 +325,7 @@ void handleClients(SOCKET clientSocket, char* type){
 
 void hydrogenReceiver(SOCKET clientSocket) {
     char buffer[BUFFER_SIZE] = {0};
-
+    
     while (true) {
         recv(clientSocket, buffer, sizeof(buffer) -  1, 0);
 
@@ -337,8 +338,8 @@ void hydrogenReceiver(SOCKET clientSocket) {
             hydrogenCircularBuffer[hydrogenWriteIndex] = &msg;
             hydrogenWriteIndex = (hydrogenWriteIndex + 1) % CIRCULAR_BUFFER_SIZE;
             hydrogenCv.notify_one(); // Notify main thread
-        }
-        // Add some delay if necessary
+        }   
+        send(clientSocket, ACK.c_str(), ACK.size(), 0);
     }
 }
 
@@ -358,7 +359,7 @@ void oxygenReceiver(SOCKET clientSocket) {
             oxygenWriteIndex = (oxygenWriteIndex + 1) % CIRCULAR_BUFFER_SIZE;
             oxygenCv.notify_one(); // Notify main thread
         }
-        // Add some delay if necessary
+        send(clientSocket, ACK.c_str(), ACK.size(), 0);
     }
 }
 
@@ -367,10 +368,9 @@ void handleHydrogenClient(SOCKET clientSocket){
 
     std::thread hydrogenReceiverThread(hydrogenReceiver, clientSocket);
     hydrogenReceiverThread.detach();
-    mutex thr_lock;
 
     while(true){
-        std::unique_lock<std::mutex> lock(thr_lock);
+        std::unique_lock<std::mutex> lock(hydrogenBuffMutex);
         hydrogenCv.wait(lock, []{ return hydrogenReadIndex != hydrogenWriteIndex; }); // Wait for data in circular buffer
         
         char* message = *hydrogenCircularBuffer[hydrogenReadIndex];
@@ -385,7 +385,7 @@ void handleHydrogenClient(SOCKET clientSocket){
         std::unique_lock<mutex> HArrayLock(hydrogenArrayMutex);
         // cout << "I'm holding the hydrogen mutex now...\n";
         hydrogenRequests.push_back(req);
-        cout << "Pushed: " << molecule_name << endl;
+        // cout << "Pushed: " << molecule_name << endl;
         // cout << "I'm not holding the hydrogen mutex anymore...\n";
 
         if (hydrogenRequests.size() >= 2){
@@ -406,10 +406,9 @@ void handleOxygenClient(SOCKET clientSocket){
 
     std::thread oxygenReceiverThread(oxygenReceiver, clientSocket);
     oxygenReceiverThread.detach();
-    mutex thr_lock;
 
     while(true){
-        std::unique_lock<std::mutex> lock(thr_lock);
+        std::unique_lock<std::mutex> lock(oxygenBuffMutex);
         oxygenCv.wait(lock, []{ return oxygenReadIndex != oxygenWriteIndex; }); // Wait for data in circular buffer
         
         char* message = *oxygenCircularBuffer[oxygenReadIndex];
