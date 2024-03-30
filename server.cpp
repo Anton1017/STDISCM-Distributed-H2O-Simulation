@@ -18,7 +18,7 @@ const char* SERVER_ADDRESS = "127.0.0.1";
 
 
 const int BUFFER_SIZE = 128;
-const int CIRCULAR_BUFFER_SIZE = 10000;
+const int CIRCULAR_BUFFER_SIZE = 1000000;
 
 int hydrogenWriteIndex = 0;
 int hydrogenReadIndex = 0;
