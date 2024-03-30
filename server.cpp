@@ -18,7 +18,7 @@ const char* SERVER_ADDRESS = "127.0.0.1";
 
 
 const int BUFFER_SIZE = 128;
-const int CIRCULAR_BUFFER_SIZE = 1000;
+const int CIRCULAR_BUFFER_SIZE = 10000;
 
 int hydrogenWriteIndex = 0;
 int hydrogenReadIndex = 0;
@@ -367,9 +367,10 @@ void handleHydrogenClient(SOCKET clientSocket){
 
     std::thread hydrogenReceiverThread(hydrogenReceiver, clientSocket);
     hydrogenReceiverThread.detach();
+    mutex thr_lock;
 
     while(true){
-        std::unique_lock<std::mutex> lock(hydrogenBuffMutex);
+        std::unique_lock<std::mutex> lock(thr_lock);
         hydrogenCv.wait(lock, []{ return hydrogenReadIndex != hydrogenWriteIndex; }); // Wait for data in circular buffer
         
         char* message = *hydrogenCircularBuffer[hydrogenReadIndex];
@@ -405,9 +406,10 @@ void handleOxygenClient(SOCKET clientSocket){
 
     std::thread oxygenReceiverThread(oxygenReceiver, clientSocket);
     oxygenReceiverThread.detach();
+    mutex thr_lock;
 
     while(true){
-        std::unique_lock<std::mutex> lock(oxygenBuffMutex);
+        std::unique_lock<std::mutex> lock(thr_lock);
         oxygenCv.wait(lock, []{ return oxygenReadIndex != oxygenWriteIndex; }); // Wait for data in circular buffer
         
         char* message = *oxygenCircularBuffer[oxygenReadIndex];
