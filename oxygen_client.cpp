@@ -116,6 +116,7 @@ int main() {
                 std::string log = oxygen + ", request, " +  currDate + " " + currTime;
                 std::cout << log << std::endl;
                 send(sock, log.c_str(), strlen(log.c_str()), 0);
+                // std::this_thread::sleep_for(std::chrono::milliseconds(1)); // Delay sending to prevent server overload
             }
 
             // std::cout << "Enter end point: ";
