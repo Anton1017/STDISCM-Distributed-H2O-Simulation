@@ -21,17 +21,20 @@ const char* SERVER_ADDRESS = "127.0.0.1";
 const int BUFFER_SIZE = 128;
 const int CIRCULAR_BUFFER_SIZE = 1000000;
 
-int hydrogenWriteIndex = 0;
-int hydrogenReadIndex = 0;
+int hydrogenReceiveWriteIndex = 0;
+int hydrogenReceiveReadIndex = 0;
 
-int oxygenWriteIndex = 0;
-int oxygenReadIndex = 0;
+int oxygenReceiveWriteIndex = 0;
+int oxygenReceiveReadIndex = 0;
 
 std::condition_variable hydrogenCv;
 std::condition_variable oxygenCv;
 
-char** hydrogenCircularBuffer[CIRCULAR_BUFFER_SIZE];
-char** oxygenCircularBuffer[CIRCULAR_BUFFER_SIZE];
+char** hydrogenReceiveCircularBuffer[CIRCULAR_BUFFER_SIZE];
+char** oxygenReceiveCircularBuffer[CIRCULAR_BUFFER_SIZE];
+
+string hydrogenSendBuff = {0};
+string oxygenSendBuff = {0};
 
 struct Request {
     string molecule_name;
@@ -43,8 +46,12 @@ struct Request {
 mutex hydrogenArrayMutex;
 mutex oxygenArrayMutex;
 
-mutex hydrogenBuffMutex;
-mutex oxygenBuffMutex;
+mutex hydrogenReceiveBuffMutex;
+mutex oxygenReceiveBuffMutex;
+mutex hydrogenSendBuffMutex;
+mutex oxygenSendBuffMutex;
+mutex hydrogenAckMutex;
+mutex oxygenAckMutex;
 
 vector<SOCKET> hydrogenSockets;
 vector<SOCKET> oxygenSockets;
@@ -328,18 +335,21 @@ void hydrogenReceiver(SOCKET clientSocket) {
     
     while (true) {
         recv(clientSocket, buffer, sizeof(buffer) -  1, 0);
-
-        // le pointer hack
-        char* msg = buffer;
-        
-        // Store pointer to the received message in the circular buffer
-        {   
-            std::lock_guard<std::mutex> lock(hydrogenBuffMutex);
-            hydrogenCircularBuffer[hydrogenWriteIndex] = &msg;
-            hydrogenWriteIndex = (hydrogenWriteIndex + 1) % CIRCULAR_BUFFER_SIZE;
-            hydrogenCv.notify_one(); // Notify main thread
-        }   
-        send(clientSocket, ACK.c_str(), ACK.size(), 0);
+        if(strcmp(buffer, "ACK")){ // if request is received
+            char* msg = buffer;
+            {
+                std::lock_guard<std::mutex> lock(hydrogenReceiveBuffMutex);
+                hydrogenReceiveCircularBuffer[hydrogenReceiveWriteIndex] = &msg;
+                hydrogenReceiveWriteIndex = (hydrogenReceiveWriteIndex + 1) % CIRCULAR_BUFFER_SIZE;
+                hydrogenCv.notify_one(); // Notify main thread
+            }
+            hydrogenAckMutex.unlock();
+            hydrogenSendBuff = ACK;
+            hydrogenSendBuffMutex.unlock();
+        }
+        else{ // if ack is received
+            hydrogenAckMutex.unlock();
+        }
     }
 }
 
@@ -348,32 +358,56 @@ void oxygenReceiver(SOCKET clientSocket) {
 
     while (true) {
         recv(clientSocket, buffer, sizeof(buffer) -  1, 0);
-
-        // le pointer hack
-        char* msg = buffer;
-        
-        // Store pointer to the received message in the circular buffer
-        {
-            std::lock_guard<std::mutex> lock(oxygenBuffMutex);
-            oxygenCircularBuffer[oxygenWriteIndex] = &msg;
-            oxygenWriteIndex = (oxygenWriteIndex + 1) % CIRCULAR_BUFFER_SIZE;
-            oxygenCv.notify_one(); // Notify main thread
+        if(strcmp(buffer, "ACK")){ // if request is received
+            char* msg = buffer;
+            {
+                std::lock_guard<std::mutex> lock(oxygenReceiveBuffMutex);
+                oxygenReceiveCircularBuffer[oxygenReceiveWriteIndex] = &msg;
+                oxygenReceiveWriteIndex = (oxygenReceiveWriteIndex + 1) % CIRCULAR_BUFFER_SIZE;
+                oxygenCv.notify_one();
+            }
+            oxygenAckMutex.unlock();
+            oxygenSendBuff = ACK;
+            oxygenSendBuffMutex.unlock();
         }
-        send(clientSocket, ACK.c_str(), ACK.size(), 0);
+        else{ // if ack is received
+            oxygenAckMutex.unlock();
+        }
+    }
+}
+
+
+void hydrogenSender(SOCKET clientSocket) {
+    while (true) {
+        hydrogenAckMutex.lock();
+        hydrogenSendBuffMutex.lock(); // Prevent execution until unlocked by ACK in receiver block
+        send(clientSocket, hydrogenSendBuff.c_str(), hydrogenSendBuff.size(), 0);
+        
+    }
+}
+
+void oxygenSender(SOCKET clientSocket) {
+    while (true) {
+        oxygenAckMutex.lock();
+        oxygenSendBuffMutex.lock(); // Prevent execution until unlocked by ACK in receiver block
+        send(clientSocket, oxygenSendBuff.c_str(), oxygenSendBuff.size(), 0);
     }
 }
 
 void handleHydrogenClient(SOCKET clientSocket){
     char buffer[BUFFER_SIZE] = {0};
 
+    std::thread hydrogenSenderThread(hydrogenSender, clientSocket);
+    hydrogenSenderThread.detach();
+
     std::thread hydrogenReceiverThread(hydrogenReceiver, clientSocket);
     hydrogenReceiverThread.detach();
 
     while(true){
-        std::unique_lock<std::mutex> lock(hydrogenBuffMutex);
-        hydrogenCv.wait(lock, []{ return hydrogenReadIndex != hydrogenWriteIndex; }); // Wait for data in circular buffer
+        std::unique_lock<std::mutex> lock(hydrogenReceiveBuffMutex);
+        hydrogenCv.wait(lock, []{ return hydrogenReceiveReadIndex != hydrogenReceiveWriteIndex; }); // Wait for data in circular buffer
         
-        char* message = *hydrogenCircularBuffer[hydrogenReadIndex];
+        char* message = *hydrogenReceiveCircularBuffer[hydrogenReceiveReadIndex];
         cout << message << endl;
         // Process message pointed by message
         // ...
@@ -395,7 +429,7 @@ void handleHydrogenClient(SOCKET clientSocket){
         HArrayLock.unlock();
 
         // delete[] message; // Free memory allocated for the message
-        hydrogenReadIndex = (hydrogenReadIndex + 1) % CIRCULAR_BUFFER_SIZE;
+        hydrogenReceiveReadIndex = (hydrogenReceiveReadIndex + 1) % CIRCULAR_BUFFER_SIZE;
         lock.unlock();
         
     }
@@ -404,14 +438,17 @@ void handleHydrogenClient(SOCKET clientSocket){
 void handleOxygenClient(SOCKET clientSocket){
     char buffer[BUFFER_SIZE] = {0};
 
+    std::thread oxygenSenderThread(oxygenSender, clientSocket);
+    oxygenSenderThread.detach();
+
     std::thread oxygenReceiverThread(oxygenReceiver, clientSocket);
     oxygenReceiverThread.detach();
 
     while(true){
-        std::unique_lock<std::mutex> lock(oxygenBuffMutex);
-        oxygenCv.wait(lock, []{ return oxygenReadIndex != oxygenWriteIndex; }); // Wait for data in circular buffer
+        std::unique_lock<std::mutex> lock(oxygenReceiveBuffMutex);
+        oxygenCv.wait(lock, []{ return oxygenReceiveReadIndex != oxygenReceiveWriteIndex; }); // Wait for data in circular buffer
         
-        char* message = *oxygenCircularBuffer[oxygenReadIndex];
+        char* message = *oxygenReceiveCircularBuffer[oxygenReceiveReadIndex];
         cout << message << endl;
         // Process message pointed by message
         // ...
@@ -433,7 +470,7 @@ void handleOxygenClient(SOCKET clientSocket){
         OArrayLock.unlock();
 
         // delete[] message; // Free memory allocated for the message
-        oxygenReadIndex = (oxygenReadIndex + 1) % CIRCULAR_BUFFER_SIZE;
+        oxygenReceiveReadIndex = (oxygenReceiveReadIndex + 1) % CIRCULAR_BUFFER_SIZE;
         lock.unlock();
     }  
     
@@ -467,14 +504,23 @@ void bondMolecules() {
         O.isBonded = true;
         log = createLog(H1);
         cout << log << endl;
+
+        hydrogenSendBuff = log;
+        hydrogenSendBuffMutex.unlock();
         send(H1.clientSocket, log.c_str(), log.size(), 0);
 
         log = createLog(H2);
         cout << log << endl;
+
+        hydrogenSendBuff = log;
+        hydrogenSendBuffMutex.unlock();
         send(H2.clientSocket, log.c_str(), log.size(), 0);
 
         log = createLog(O);
         cout << log << endl;
+
+        oxygenSendBuff = log;
+        oxygenSendBuffMutex.unlock();
         send(O.clientSocket, log.c_str(), log.size(), 0);
     }
 }
