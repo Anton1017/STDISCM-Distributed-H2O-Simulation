@@ -341,7 +341,7 @@ void hydrogenReceiver(SOCKET clientSocket) {
                 std::lock_guard<std::mutex> lock(hydrogenReceiveBuffMutex);
                 hydrogenReceiveCircularBuffer[hydrogenReceiveWriteIndex] = &msg;
                 hydrogenReceiveWriteIndex = (hydrogenReceiveWriteIndex + 1) % CIRCULAR_BUFFER_SIZE;
-                hydrogenCv.notify_one(); // Notify main thread
+                hydrogenCv.notify_one();
             }
             hydrogenAckMutex.unlock();
             hydrogenSendBuff = ACK;
@@ -502,26 +502,27 @@ void bondMolecules() {
         H1.isBonded = true;
         H2.isBonded = true;
         O.isBonded = true;
+
         log = createLog(H1);
         cout << log << endl;
 
         hydrogenSendBuff = log;
         hydrogenSendBuffMutex.unlock();
-        send(H1.clientSocket, log.c_str(), log.size(), 0);
-
-        log = createLog(H2);
-        cout << log << endl;
-
-        hydrogenSendBuff = log;
-        hydrogenSendBuffMutex.unlock();
-        send(H2.clientSocket, log.c_str(), log.size(), 0);
+        // send(H1.clientSocket, log.c_str(), log.size(), 0);
 
         log = createLog(O);
         cout << log << endl;
 
         oxygenSendBuff = log;
         oxygenSendBuffMutex.unlock();
-        send(O.clientSocket, log.c_str(), log.size(), 0);
+        // send(O.clientSocket, log.c_str(), log.size(), 0);
+
+        log = createLog(H2);
+        cout << log << endl;
+
+        hydrogenSendBuff = log;
+        hydrogenSendBuffMutex.unlock();
+        // send(H2.clientSocket, log.c_str(), log.size(), 0);
     }
 }
 
