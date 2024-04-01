@@ -48,7 +48,38 @@ std::string getCurrentTime() {
     return std::string(buffer);
 }
 
-void receiveLogs(SOCKET sock);
+std::chrono::steady_clock::time_point receiveLogs(SOCKET sock, int size){
+    //auto start = std::chrono::steady_clock::now();
+    int ctr = 0;
+    int requestNumber = 0;
+    while (true) {
+        //std::cout << "Listening for server responses: " << std::endl;
+        char buffer[1024] = {0};
+        int bytesReceived = recv(sock, reinterpret_cast<char*>(&requestNumber), sizeof(requestNumber), 0); 
+        requestNumber = ntohl(requestNumber);
+
+        std::string currTime = getCurrentTime();
+        std::string currDate = getCurrentDate();
+        std::string timestamp = currDate + " " + currTime;
+       
+        ctr++;
+        //std::cout << buffer << std::endl;
+        std::string log = "H" + std::to_string(requestNumber) + ", bonded, " + timestamp; 
+
+        std::cout << log << std::endl;
+        std::cout << ctr << std::endl;
+    
+    
+        if (ctr == size) {
+            break;
+        }
+    }
+    //auto end = std::chrono::steady_clock::now();
+
+    //std::chrono::duration<double> elapsed_seconds = end - start;
+
+    return std::chrono::steady_clock::now();
+}
 
 int main() {
 
@@ -85,6 +116,7 @@ int main() {
     //User input
     std::string temp;
     char buffer[1024] = {0};
+    int requestmsg = 0;
     while (std::getline(std::cin, temp))
     {
         if (temp != "Exit") {
@@ -94,8 +126,9 @@ int main() {
 
             int H_max = std::stoi(num_Hydrogen);
 
-            std::thread receiveLogsthread(receiveLogs, sock, H_max);
-            receiveLogsthread.detach();
+            //std::thread receiveLogsthread(receiveLogs, sock, H_max);
+            //auto receiveAsync = std::async(receiveLogs, sock, H_max);
+            //receiveLogsthread.detach();
 
             std::vector<std::string> hydrogen_List;
             std::string H_symbol = "H"; 
@@ -123,8 +156,11 @@ int main() {
             */
             //start timer
             auto start = std::chrono::steady_clock::now();
+            std::chrono::steady_clock::time_point end;
+            std::thread receiveThread([&] {end = receiveLogs(sock, H_max);});
+
             for (int i = 1; i <= hydrogenListSize; i++) {
-                int requestmsg = htonl(i);  // Convert to network byte order
+                requestmsg = htonl(i);  // Convert to network byte order
 
                 if (send(sock, (char*)&requestmsg, sizeof(requestmsg), 0) == SOCKET_ERROR) {
                     std::cerr << "Failed to send request: " << WSAGetLastError() << std::endl;
@@ -135,17 +171,16 @@ int main() {
                 std::string log = "H" + std::to_string(i) + ", request, " +  currDate + " " + currTime;
                 std::cout << log << std::endl;
             }
-
-            auto end = 
-
             
-
-
             //end timer
             // auto end = std::chrono::steady_clock::now();
             // std::chrono::duration<double> elapsed_seconds = end - start;
             // std::cout << "Time elapsed: " << elapsed_seconds.count() << "s" << std::endl;
+            //auto end = receiveAsync.get();
+            receiveThread.join();
+            std::chrono::duration<double> elapsed_seconds = end - start;
 
+            std::cout << "Time elapsed: " << elapsed_seconds.count() << "s" << std::endl;
         }
         else {
             send(sock, temp.c_str(), temp.size(),  0);
@@ -161,21 +196,3 @@ int main() {
 
     return 0;
 }
-
-auto receiveLogs(SOCKET sock, int size){
-    int ctr = 0;
-    while (true) {
-        //std::cout << "Listening for server responses: " << std::endl;
-        char buffer[1024] = {0};
-        recv(sock, buffer, sizeof(buffer) -  1, 0);
-        std::cout << buffer << std::endl;
-
-        ctr++;
-        if (ctr == size) {
-            break;
-        }
-    }
-
-    return std::chrono::steady_clock::now();
-}
-

@@ -48,7 +48,38 @@ std::string getCurrentTime() {
     return std::string(buffer);
 }
 
-void receiveLogs(SOCKET sock);
+std::chrono::steady_clock::time_point receiveLogs(SOCKET sock, int size){
+    //auto start = std::chrono::steady_clock::now();
+    int ctr = 0;
+    int requestNumber = 0;
+    while (true) {
+        //std::cout << "Listening for server responses: " << std::endl;
+        char buffer[1024] = {0};
+        int bytesReceived = recv(sock, reinterpret_cast<char*>(&requestNumber), sizeof(requestNumber), 0); 
+        requestNumber = ntohl(requestNumber);
+
+        std::string currTime = getCurrentTime();
+        std::string currDate = getCurrentDate();
+        std::string timestamp = currDate + " " + currTime;
+       
+        ctr++;
+        //std::cout << buffer << std::endl;
+        std::string log = "O" + std::to_string(requestNumber) + ", bonded, " + timestamp; 
+
+        std::cout << log << std::endl;
+        std::cout << ctr << std::endl;
+    
+    
+        if (ctr == size) {
+            break;
+        }
+    }
+    //auto end = std::chrono::steady_clock::now();
+
+    //std::chrono::duration<double> elapsed_seconds = end - start;
+
+    return std::chrono::steady_clock::now();
+}
 
 int main() {
 
@@ -82,12 +113,10 @@ int main() {
     std::string identifier = "oxygen";
     send(sock, identifier.c_str(), identifier.size(),  0);
     
-    std::thread receiveLogsthread(receiveLogs, sock);
-    receiveLogsthread.detach(); 
-
     //User input
     std::string temp;
     char buffer[1024] = {0};
+    int requestmsg = 0;
     while (std::getline(std::cin, temp))
     {
         if (temp != "Exit") {
@@ -119,8 +148,12 @@ int main() {
                 send(sock, log.c_str(), strlen(log.c_str()), 0);
             }
             */
+            auto start = std::chrono::steady_clock::now();
+            std::chrono::steady_clock::time_point end;
+            std::thread receiveThread([&] {end = receiveLogs(sock, O_max);});
+
             for (int i = 1; i <= oxygenListSize; i++) {
-                int requestmsg = htonl(i);  // Convert to network byte order
+                requestmsg = htonl(i);  // Convert to network byte order
 
                 if (send(sock, (char*)&requestmsg, sizeof(requestmsg), 0) == SOCKET_ERROR) {
                     std::cerr << "Failed to send request: " << WSAGetLastError() << std::endl;
@@ -150,6 +183,10 @@ int main() {
             // auto end = std::chrono::steady_clock::now();
             // std::chrono::duration<double> elapsed_seconds = end - start;
             // std::cout << "Time elapsed: " << elapsed_seconds.count() << "s" << std::endl;
+            receiveThread.join();
+            std::chrono::duration<double> elapsed_seconds = end - start;
+
+            std::cout << "Time elapsed: " << elapsed_seconds.count() << "s" << std::endl;
 
         }
         else {
@@ -165,13 +202,4 @@ int main() {
     WSACleanup();
 
     return 0;
-}
-
-void receiveLogs(SOCKET sock){
-    while (true) {
-        //std::cout << "Listening for server responses: " << std::endl;
-        char buffer[1024] = {0};
-        recv(sock, buffer, sizeof(buffer) -  1, 0);
-        std::cout << buffer << std::endl;
-    }
 }

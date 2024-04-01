@@ -301,7 +301,7 @@ void handleHydrogenClient(SOCKET clientSocket){
     char buffer[BUFFER_SIZE] = {0};
 
     while(true){
-        int requestNumber;
+        int requestNumber = 0;
         int bytesReceived = recv(clientSocket, reinterpret_cast<char*>(&requestNumber), sizeof(requestNumber), 0);
         // Convert from network byte order to host byte order
         requestNumber = ntohl(requestNumber);
@@ -331,7 +331,7 @@ void handleOxygenClient(SOCKET clientSocket){
     char buffer[BUFFER_SIZE] = {0};
 
     while(true){
-        int requestNumber;
+        int requestNumber = 0;
         int bytesReceived = recv(clientSocket, reinterpret_cast<char*>(&requestNumber), sizeof(requestNumber), 0);
         // Convert from network byte order to host byte order
         requestNumber = ntohl(requestNumber);
@@ -357,6 +357,8 @@ void handleOxygenClient(SOCKET clientSocket){
 }
 
 void bondMolecules() {
+    int num = 0;
+    int num_send = 0;
     while(true){
         H_semaphore.wait();
         H_semaphore.wait();
@@ -379,17 +381,27 @@ void bondMolecules() {
         H1.isBonded = true;
         H2.isBonded = true;
         O.isBonded = true;
+
         log = createLog(H1);
         cout << log << endl;
-        send(H1.clientSocket, log.c_str(), log.size(), 0);
+
+        num = stoi(H1.molecule_name.erase(0, 1));
+        num_send = htonl(num);
+        send(H1.clientSocket, (char*)&num_send, sizeof(num_send), 0); 
 
         log = createLog(H2);
         cout << log << endl;
-        send(H2.clientSocket, log.c_str(), log.size(), 0);
+
+        num = stoi(H2.molecule_name.erase(0, 1));
+        num_send = htonl(num);
+        send(H2.clientSocket, (char*)&num_send, sizeof(num_send), 0); 
 
         log = createLog(O);
         cout << log << endl;
-        send(O.clientSocket, log.c_str(), log.size(), 0);
+
+        num = stoi(O.molecule_name.erase(0, 1));
+        num_send = htonl(num);
+        send(O.clientSocket, (char*)&num_send, sizeof(num_send), 0); 
     }
 }
 
