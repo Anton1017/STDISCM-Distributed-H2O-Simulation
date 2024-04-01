@@ -80,10 +80,7 @@ int main() {
 
     //Send identifier as hydrogen
     std::string identifier = "hydrogen";
-    send(sock, identifier.c_str(), identifier.size(),  0);
-
-    std::thread receiveLogsthread(receiveLogs, sock);
-    receiveLogsthread.detach(); 
+    send(sock, identifier.c_str(), identifier.size(),  0); 
 
     //User input
     std::string temp;
@@ -96,6 +93,9 @@ int main() {
             std::getline(std::cin, num_Hydrogen);
 
             int H_max = std::stoi(num_Hydrogen);
+
+            std::thread receiveLogsthread(receiveLogs, sock, H_max);
+            receiveLogsthread.detach();
 
             std::vector<std::string> hydrogen_List;
             std::string H_symbol = "H"; 
@@ -136,7 +136,7 @@ int main() {
                 std::cout << log << std::endl;
             }
 
-        
+            auto end = 
 
             
 
@@ -162,12 +162,20 @@ int main() {
     return 0;
 }
 
-void receiveLogs(SOCKET sock){
+auto receiveLogs(SOCKET sock, int size){
+    int ctr = 0;
     while (true) {
         //std::cout << "Listening for server responses: " << std::endl;
         char buffer[1024] = {0};
         recv(sock, buffer, sizeof(buffer) -  1, 0);
         std::cout << buffer << std::endl;
+
+        ctr++;
+        if (ctr == size) {
+            break;
+        }
     }
+
+    return std::chrono::steady_clock::now();
 }
 
