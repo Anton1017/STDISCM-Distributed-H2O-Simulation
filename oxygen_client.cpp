@@ -16,8 +16,12 @@ const int PORT = 6900;
 const int BUFFER_SIZE = 1024;
 const char* SERVER_ADDRESS = "127.0.0.1";
 
+const string ACK = "ACK";
+
 mutex buffMutex;
 std::condition_variable buffCv;
+bool isSending = false;
+bool firstRun = true;
 
 std::string getCurrentDate() {
     // Get the current time
@@ -123,7 +127,17 @@ int main() {
                 std::string log = oxygen + ", request, " +  currDate + " " + currTime;
                 std::cout << log << std::endl;
                 buffMutex.lock();
+
+                if(!firstRun && isSending){
+                    unique_lock lock(buffMutex);
+                    buffCv.wait(lock, []{ return !isSending; });
+                }else{
+                    firstRun = false;
+                }
+                isSending = true;
                 send(sock, log.c_str(), strlen(log.c_str()), 0);
+                isSending = false;
+                buffCv.notify_one();
             }
 
             // std::cout << "Enter end point: ";
@@ -166,8 +180,17 @@ void receiveLogs(SOCKET sock){
         //std::cout << "Listening for server responses: " << std::endl;
         char buffer[1024] = {0};
         recv(sock, buffer, sizeof(buffer) -  1, 0);
-        if(strcmp(buffer, "ACK"))
+        if(strcmp(buffer, "ACK")){
             std::cout << buffer << std::endl;
+            if(isSending){
+                unique_lock lock(buffMutex);
+                buffCv.wait(lock, []{ return !isSending; });
+            }
+            isSending = true;
+            send(sock, ACK.c_str(), ACK.size(), 0);
+            isSending = false;
+            buffCv.notify_one();
+        }
         else{
             buffMutex.unlock();
         }

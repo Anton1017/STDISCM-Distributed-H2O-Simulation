@@ -30,6 +30,14 @@ int oxygenReceiveReadIndex = 0;
 std::condition_variable hydrogenCv;
 std::condition_variable oxygenCv;
 
+std::condition_variable hydrogenSendCv;
+std::condition_variable oxygenSendCv;
+
+bool hIsSending = false;
+bool oIsSending = false;
+bool hHasAck = true; // Initialize to true at start
+bool oHasAck = true;
+
 char** hydrogenReceiveCircularBuffer[CIRCULAR_BUFFER_SIZE];
 char** oxygenReceiveCircularBuffer[CIRCULAR_BUFFER_SIZE];
 
@@ -50,8 +58,6 @@ mutex hydrogenReceiveBuffMutex;
 mutex oxygenReceiveBuffMutex;
 mutex hydrogenSendBuffMutex;
 mutex oxygenSendBuffMutex;
-mutex hydrogenAckMutex;
-mutex oxygenAckMutex;
 
 vector<SOCKET> hydrogenSockets;
 vector<SOCKET> oxygenSockets;
@@ -155,6 +161,8 @@ public:
 
 Semaphore H_semaphore = Semaphore(0);
 Semaphore O_semaphore = Semaphore(0);
+Semaphore hydrogenSendBuffSem = Semaphore(0);
+Semaphore oxygenSendBuffSem = Semaphore(0);
 
 int main() {
     char buffer[BUFFER_SIZE] = {0};
@@ -343,12 +351,15 @@ void hydrogenReceiver(SOCKET clientSocket) {
                 hydrogenReceiveWriteIndex = (hydrogenReceiveWriteIndex + 1) % CIRCULAR_BUFFER_SIZE;
                 hydrogenCv.notify_one();
             }
-            hydrogenAckMutex.unlock();
+            unique_lock lock(hydrogenSendBuffMutex);
+            hydrogenSendCv.wait(lock, []{ return !hIsSending; });
+            hIsSending = true;
             hydrogenSendBuff = ACK;
-            hydrogenSendBuffMutex.unlock();
+            hydrogenSendBuffSem.notify();
         }
-        else{ // if ack is received
-            hydrogenAckMutex.unlock();
+        else{ // if ack is received (after sending bond message to client)
+            hHasAck = true;
+            hydrogenSendCv.notify_one();
         }
     }
 }
@@ -366,12 +377,16 @@ void oxygenReceiver(SOCKET clientSocket) {
                 oxygenReceiveWriteIndex = (oxygenReceiveWriteIndex + 1) % CIRCULAR_BUFFER_SIZE;
                 oxygenCv.notify_one();
             }
-            oxygenAckMutex.unlock();
+
+            unique_lock lock(oxygenSendBuffMutex);
+            oxygenSendCv.wait(lock, []{ return !oIsSending; });
+            oIsSending = true;
             oxygenSendBuff = ACK;
-            oxygenSendBuffMutex.unlock();
+            oxygenSendBuffSem.notify();
         }
         else{ // if ack is received
-            oxygenAckMutex.unlock();
+            oHasAck = true;
+            oxygenSendCv.notify_one();
         }
     }
 }
@@ -379,18 +394,19 @@ void oxygenReceiver(SOCKET clientSocket) {
 
 void hydrogenSender(SOCKET clientSocket) {
     while (true) {
-        hydrogenAckMutex.lock();
-        hydrogenSendBuffMutex.lock(); // Prevent execution until unlocked by ACK in receiver block
+        hydrogenSendBuffSem.wait();
         send(clientSocket, hydrogenSendBuff.c_str(), hydrogenSendBuff.size(), 0);
-        
+        hIsSending = false;
+        hHasAck = false;
     }
 }
 
 void oxygenSender(SOCKET clientSocket) {
     while (true) {
-        oxygenAckMutex.lock();
-        oxygenSendBuffMutex.lock(); // Prevent execution until unlocked by ACK in receiver block
+        oxygenSendBuffSem.wait();
         send(clientSocket, oxygenSendBuff.c_str(), oxygenSendBuff.size(), 0);
+        oIsSending = false;
+        oHasAck = false;
     }
 }
 
@@ -506,22 +522,31 @@ void bondMolecules() {
         log = createLog(H1);
         cout << log << endl;
 
+        unique_lock lockH1(hydrogenSendBuffMutex);
+        hydrogenSendCv.wait(lockH1, []{ return !hIsSending && hHasAck; });
+        hIsSending = true;
         hydrogenSendBuff = log;
-        hydrogenSendBuffMutex.unlock();
+        hydrogenSendBuffSem.notify();
         // send(H1.clientSocket, log.c_str(), log.size(), 0);
 
         log = createLog(O);
         cout << log << endl;
 
+        unique_lock lockO1(oxygenSendBuffMutex);
+        oxygenSendCv.wait(lockO1, []{ return !oIsSending && oHasAck; });
+        oIsSending = true;
         oxygenSendBuff = log;
-        oxygenSendBuffMutex.unlock();
+        oxygenSendBuffSem.notify();
         // send(O.clientSocket, log.c_str(), log.size(), 0);
 
         log = createLog(H2);
         cout << log << endl;
 
+        unique_lock lockH2(hydrogenSendBuffMutex);
+        hydrogenSendCv.wait(lockH2, []{ return !hIsSending && hHasAck; });
+        hIsSending = true;
         hydrogenSendBuff = log;
-        hydrogenSendBuffMutex.unlock();
+        hydrogenSendBuffSem.notify();
         // send(H2.clientSocket, log.c_str(), log.size(), 0);
     }
 }
