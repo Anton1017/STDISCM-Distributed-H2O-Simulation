@@ -166,7 +166,7 @@ void receiveLogs(SOCKET sock){
         //std::cout << "Listening for server responses: " << std::endl;
         char buffer[1024] = {0};
         recv(sock, buffer, sizeof(buffer) -  1, 0);
-        if(strcmp(buffer, "ACK"))
+        if(strcmp(buffer, "ACK") == 0)
             std::cout << buffer << std::endl;
         else{
             buffMutex.unlock();
