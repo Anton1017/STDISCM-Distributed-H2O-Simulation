@@ -121,6 +121,8 @@ int main() {
                 send(sock, log.c_str(), strlen(log.c_str()), 0);
             }
             */
+            //start timer
+            auto start = std::chrono::steady_clock::now();
             for (int i = 1; i <= hydrogenListSize; i++) {
                 int requestmsg = htonl(i);  // Convert to network byte order
 
@@ -134,18 +136,9 @@ int main() {
                 std::cout << log << std::endl;
             }
 
-            // std::cout << "Enter end point: ";
-            // std::string endPoint;
-            // std::getline(std::cin, endPoint);
+        
 
-            // std::cout << "Enter number of threads: ";
-            // std::string numThreads;
-            // std::getline(std::cin, numThreads);
-            // std::string message = startPoint + "," + endPoint + "," + numThreads;
-
-            //start timer
-            // auto start = std::chrono::steady_clock::now();
-            // send(sock, message.c_str(), message.size(),  0);
+            
 
 
             //end timer

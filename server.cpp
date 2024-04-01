@@ -322,7 +322,7 @@ void handleHydrogenClient(SOCKET clientSocket){
             H_semaphore.notify();
             H_semaphore.notify();
         }
-        HArrayLock.unlock();
+        //HArrayLock.unlock();
         
     }
 }
@@ -350,7 +350,7 @@ void handleOxygenClient(SOCKET clientSocket){
         if (oxygenRequests.size() >= 1){
             O_semaphore.notify();
         }
-        OArrayLock.unlock();
+        //OArrayLock.unlock();
         
     } 
     
