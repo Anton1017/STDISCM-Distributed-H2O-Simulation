@@ -110,12 +110,26 @@ int main() {
             int oxygenListSize = oxygen_List.size();
             //send(sock, reinterpret_cast<char*>(&oxygenListSize), sizeof(oxygenListSize), 0);
             //Send the list itself
+            /*
             for(const std::string& oxygen : oxygen_List) {
                 std::string currTime = getCurrentTime();
                 std::string currDate = getCurrentDate();
                 std::string log = oxygen + ", request, " +  currDate + " " + currTime;
                 std::cout << log << std::endl;
                 send(sock, log.c_str(), strlen(log.c_str()), 0);
+            }
+            */
+            for (int i = 1; i <= oxygenListSize; i++) {
+                int requestmsg = htonl(i);  // Convert to network byte order
+
+                if (send(sock, (char*)&requestmsg, sizeof(requestmsg), 0) == SOCKET_ERROR) {
+                    std::cerr << "Failed to send request: " << WSAGetLastError() << std::endl;
+                    break;  
+                }
+                std::string currTime = getCurrentTime();
+                std::string currDate = getCurrentDate();
+                std::string log = "O" + std::to_string(i) + ", request, " +  currDate + " " + currTime;
+                std::cout << log << std::endl;
             }
 
             // std::cout << "Enter end point: ";

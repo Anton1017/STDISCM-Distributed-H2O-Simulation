@@ -105,17 +105,33 @@ int main() {
                 hydrogen_List.push_back(combined);
                 H_symbol = "H";
             }
+            
+
             //send the size of the list 
             int hydrogenListSize = hydrogen_List.size();
             //send(sock, reinterpret_cast<char*>(&hydrogenListSize), sizeof(hydrogenListSize), 0);
 
             // send the list itself
+            /*
             for(const std::string& hydrogen : hydrogen_List) {
                 std::string currTime = getCurrentTime();
                 std::string currDate = getCurrentDate();
                 std::string log = hydrogen + ", request, " +  currDate + " " + currTime;
                 std::cout << log << std::endl;
                 send(sock, log.c_str(), strlen(log.c_str()), 0);
+            }
+            */
+            for (int i = 1; i <= hydrogenListSize; i++) {
+                int requestmsg = htonl(i);  // Convert to network byte order
+
+                if (send(sock, (char*)&requestmsg, sizeof(requestmsg), 0) == SOCKET_ERROR) {
+                    std::cerr << "Failed to send request: " << WSAGetLastError() << std::endl;
+                    break;  
+                }
+                std::string currTime = getCurrentTime();
+                std::string currDate = getCurrentDate();
+                std::string log = "H" + std::to_string(i) + ", request, " +  currDate + " " + currTime;
+                std::cout << log << std::endl;
             }
 
             // std::cout << "Enter end point: ";
@@ -161,3 +177,4 @@ void receiveLogs(SOCKET sock){
         std::cout << buffer << std::endl;
     }
 }
+

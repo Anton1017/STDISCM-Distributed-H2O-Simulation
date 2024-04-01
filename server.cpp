@@ -268,10 +268,8 @@ void handleClients(SOCKET clientSocket, char* type){
             Request req = {molecule_name, timestamp, clientSocket};
 
             std::unique_lock<mutex> HArrayLock(hydrogenArrayMutex);
-            cout << "I'm holding the hydrogen mutex now...\n";
             hydrogenRequests.push_back(req);
             
-            cout << "I'm not holding the hydrogen mutex anymore...\n";
 
             if (hydrogenRequests.size() >= 2){
                 H_semaphore.notify();
@@ -288,10 +286,8 @@ void handleClients(SOCKET clientSocket, char* type){
             Request req = {molecule_name, timestamp, clientSocket};
             
             std::unique_lock<mutex> OArrayLock(oxygenArrayMutex);
-            cout << "I'm holding the oxygen mutex now...\n";
             oxygenRequests.push_back(req);
             
-            cout << "I'm not holding the oxygen mutex anymore...\n";
 
             if (oxygenRequests.size() >= 1){
                 O_semaphore.notify();
@@ -305,21 +301,22 @@ void handleHydrogenClient(SOCKET clientSocket){
     char buffer[BUFFER_SIZE] = {0};
 
     while(true){
+        int requestNumber;
+        int bytesReceived = recv(clientSocket, reinterpret_cast<char*>(&requestNumber), sizeof(requestNumber), 0);
+        // Convert from network byte order to host byte order
+        requestNumber = ntohl(requestNumber);
 
-        recv(clientSocket, buffer, sizeof(buffer) -  1, 0);
-        cout << "just received a new request\n";
-        cout << buffer << endl;
-
-        string request = buffer;
-        string molecule_name = request.substr(0, request.find(","));
-        string timestamp = request.substr(3, request.size() - 1);
-        Request req = {molecule_name, timestamp, clientSocket};
-        cout << "Received new hydrogen request!\n" << endl;
-        std::unique_lock<mutex> HArrayLock(hydrogenArrayMutex);
-        cout << "I'm holding the hydrogen mutex now...\n";
-        hydrogenRequests.push_back(req);
+        string currTime = getCurrentTime();
+        string currDate = getCurrentDate();
+        string timestamp = currDate + " " + currTime;
+        Request req = {"H" + to_string(requestNumber), timestamp, clientSocket};
         
-        cout << "I'm not holding the hydrogen mutex anymore...\n";
+
+        //cout << "Received new hydrogen request!\n" << endl;
+        string log = createLog(req);
+        cout << log << std::endl;
+        std::unique_lock<mutex> HArrayLock(hydrogenArrayMutex);
+        hydrogenRequests.push_back(req);
 
         if (hydrogenRequests.size() >= 2){
             H_semaphore.notify();
@@ -334,38 +331,36 @@ void handleOxygenClient(SOCKET clientSocket){
     char buffer[BUFFER_SIZE] = {0};
 
     while(true){
-
-        recv(clientSocket, buffer, sizeof(buffer) -  1, 0);
-        cout << buffer << endl;
-
-        string request = buffer;
-        string molecule_name = request.substr(0, request.find(","));
-        string timestamp = request.substr(3, request.size() - 1);
-        Request req = {molecule_name, timestamp, clientSocket};
-        cout << "Received new oxygen request!\n" << endl;
+        int requestNumber;
+        int bytesReceived = recv(clientSocket, reinterpret_cast<char*>(&requestNumber), sizeof(requestNumber), 0);
+        // Convert from network byte order to host byte order
+        requestNumber = ntohl(requestNumber);
         
+        string currTime = getCurrentTime();
+        string currDate = getCurrentDate();
+        string timestamp = currDate + " " + currTime;
+        Request req = {"O" + to_string(requestNumber), timestamp, clientSocket};
+
+        //cout << "Received new oxygen request!\n" << endl;
+        string log = createLog(req);
+        cout << log << std::endl;
         std::unique_lock<mutex> OArrayLock(oxygenArrayMutex);
-        cout << "I'm holding the oxygen mutex now...\n";
         oxygenRequests.push_back(req);
-        
-        cout << "I'm not holding the oxygen mutex anymore...\n";
 
         if (oxygenRequests.size() >= 1){
             O_semaphore.notify();
         }
         OArrayLock.unlock();
-    }  
+        
+    } 
     
 }
 
 void bondMolecules() {
     while(true){
         H_semaphore.wait();
-        cout << "Waiting for first H...\n";
         H_semaphore.wait();
-        cout << "Waiting for second H...\n";
         O_semaphore.wait();
-        cout << "Waiting for an O...\n";
 
         std::unique_lock<mutex> HArrayLock(hydrogenArrayMutex);
         Request H1 = hydrogenRequests[0];
