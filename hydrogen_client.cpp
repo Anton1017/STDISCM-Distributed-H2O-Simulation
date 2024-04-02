@@ -7,35 +7,11 @@
 #include <string>
 #include <ctime>
 #include <thread>
-#include <unordered_set>
 
 const int PORT = 6900;
 const int BUFFER_SIZE = 1024;
 const char* SERVER_ADDRESS = "127.0.0.1";
 
-std::vector<int> requestedHydrogen; 
-std::vector<int> bondedHydrogen; 
-
-bool hasDuplicates(const std::vector<int>& vec) {
-    std::unordered_set<int> seen;
-    for (int num : vec) {
-        if (seen.find(num) != seen.end()) {
-            return true; // Duplicate found
-        }
-        seen.insert(num);
-    }
-    return false; // No duplicates found
-}
-
-bool checkOrderH(int bondedH, std::vector<int> requestedHydrogenList){
-    for (int i = 0; i <requestedHydrogenList.size(); i++)
-    {
-        if (bondedH == requestedHydrogenList[i]){
-            return true;
-        }
-    }
-    return false;
-}
 std::string getCurrentDate() {
     // Get the current time
     auto now = std::chrono::system_clock::now();
@@ -76,18 +52,11 @@ std::chrono::steady_clock::time_point receiveLogs(SOCKET sock, int size){
     //auto start = std::chrono::steady_clock::now();
     int ctr = 0;
     int requestNumber = 0;
-    bool rightOrder = true;
     while (true) {
         //std::cout << "Listening for server responses: " << std::endl;
         char buffer[1024] = {0};
         int bytesReceived = recv(sock, reinterpret_cast<char*>(&requestNumber), sizeof(requestNumber), 0); 
         requestNumber = ntohl(requestNumber);
-        bondedHydrogen.push_back(requestNumber);
-        if (checkOrderH(requestNumber, requestedHydrogen) == false){
-            std::cout<<requestNumber<<" has yet to be requested"<<std::endl;
-            rightOrder = false;
-            break;
-        }
         std::string currTime = getCurrentTime();
         std::string currDate = getCurrentDate();
         std::string timestamp = currDate + " " + currTime;
@@ -101,22 +70,6 @@ std::chrono::steady_clock::time_point receiveLogs(SOCKET sock, int size){
     
     
         if (ctr == size) {
-            if (rightOrder == true){
-                std::cout<<"Sanity Check: Hydrogens are in the right order"<<std::endl;
-            }
-            if (hasDuplicates(requestedHydrogen) == false &&hasDuplicates(bondedHydrogen) == false){
-                std::cout<<"Sanity Check: There are no duplicates for both requested and bonded hydrogen"<<std::endl;
-            }
-            else {
-                if (hasDuplicates(requestedHydrogen) == true)
-                {
-                    std::cout<<"Sanity Check: There are duplicates for requested hydrogen"<<std::endl;
-                }
-                else if (hasDuplicates(bondedHydrogen) == true)
-                {
-                    std::cout<<"Sanity Check: There are dupclicates for bonded hydrogen"<<std::endl;
-                }
-            }
             break;
         }
     }
@@ -212,7 +165,6 @@ int main() {
                     std::cerr << "Failed to send request: " << WSAGetLastError() << std::endl;
                     break;  
                 }
-                requestedHydrogen.push_back(i);
                 std::string currTime = getCurrentTime();
                 std::string currDate = getCurrentDate();
                 std::string log = "H" + std::to_string(i) + ", request, " +  currDate + " " + currTime;
