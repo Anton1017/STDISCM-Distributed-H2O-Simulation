@@ -125,7 +125,7 @@ int main() {
                 std::string currTime = getCurrentTime();
                 std::string currDate = getCurrentDate();
                 std::string log = oxygen + ", request, " +  currDate + " " + currTime;
-                std::cout << log << std::endl;
+                // std::cout << log << std::endl;
                 buffMutex.lock();
 
                 if(!firstRun && isSending){
@@ -181,7 +181,7 @@ void receiveLogs(SOCKET sock){
         char buffer[1024] = {0};
         recv(sock, buffer, sizeof(buffer) -  1, 0);
         if(strcmp(buffer, "ACK")){
-            std::cout << buffer << std::endl;
+            // std::cout << buffer << std::endl;
             if(isSending){
                 unique_lock lock(buffMutex);
                 buffCv.wait(lock, []{ return !isSending; });

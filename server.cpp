@@ -227,6 +227,8 @@ int main() {
         std::cin >> str;
         std::cout <<  "hydrogen array size: " << hydrogenRequests.size() << endl;
         std::cout <<  "oxygen array size: " << oxygenRequests.size() << endl;
+        std::cout << "ack " <<  hHasAck << " " << oHasAck << endl;
+        std::cout << "not_sending " <<  !hIsSending << " " << !oIsSending << endl;
     }
 
     // Close the server socket
@@ -340,22 +342,31 @@ void handleClients(SOCKET clientSocket, char* type){
 
 void hydrogenReceiver(SOCKET clientSocket) {
     char buffer[BUFFER_SIZE] = {0};
-    
+
+
     while (true) {
-        recv(clientSocket, buffer, sizeof(buffer) -  1, 0);
+        int bytesReceived = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
+        if (bytesReceived <= 0) {
+            // Handle connection closed or error
+            break;
+        }
+        
         if(strcmp(buffer, "ACK")){ // if request is received
             char* msg = buffer;
             {
                 std::lock_guard<std::mutex> lock(hydrogenReceiveBuffMutex);
                 hydrogenReceiveCircularBuffer[hydrogenReceiveWriteIndex] = &msg;
                 hydrogenReceiveWriteIndex = (hydrogenReceiveWriteIndex + 1) % CIRCULAR_BUFFER_SIZE;
-                hydrogenCv.notify_one();
+                
             }
-            unique_lock lock(hydrogenSendBuffMutex);
-            hydrogenSendCv.wait(lock, []{ return !hIsSending; });
-            hIsSending = true;
-            hydrogenSendBuff = ACK;
-            hydrogenSendBuffSem.notify();
+            hydrogenCv.notify_one();
+            {
+                unique_lock lock(hydrogenSendBuffMutex);
+                hydrogenSendCv.wait(lock, []{ return !hIsSending; });
+                hIsSending = true;
+                hydrogenSendBuff = ACK;
+                hydrogenSendBuffSem.notify();
+            } 
         }
         else{ // if ack is received (after sending bond message to client)
             hHasAck = true;
@@ -395,18 +406,29 @@ void oxygenReceiver(SOCKET clientSocket) {
 void hydrogenSender(SOCKET clientSocket) {
     while (true) {
         hydrogenSendBuffSem.wait();
-        send(clientSocket, hydrogenSendBuff.c_str(), hydrogenSendBuff.size(), 0);
-        hIsSending = false;
-        hHasAck = false;
+        {
+            std::lock_guard<std::mutex> lock(hydrogenSendBuffMutex);
+            send(clientSocket, hydrogenSendBuff.c_str(), hydrogenSendBuff.size(), 0);
+            hIsSending = false;
+            if (hydrogenSendBuff != ACK)
+                hHasAck = false;
+        }
+        // Notify the waiting thread after releasing the lock
+        hydrogenSendCv.notify_one();
     }
 }
 
 void oxygenSender(SOCKET clientSocket) {
     while (true) {
         oxygenSendBuffSem.wait();
-        send(clientSocket, oxygenSendBuff.c_str(), oxygenSendBuff.size(), 0);
-        oIsSending = false;
-        oHasAck = false;
+        {
+            std::lock_guard<std::mutex> lock(oxygenSendBuffMutex);
+            send(clientSocket, oxygenSendBuff.c_str(), oxygenSendBuff.size(), 0);
+            oIsSending = false;
+            if (oxygenSendBuff != ACK)
+                oHasAck = false;
+        }
+        oxygenSendCv.notify_one();
     }
 }
 
@@ -424,6 +446,7 @@ void handleHydrogenClient(SOCKET clientSocket){
         hydrogenCv.wait(lock, []{ return hydrogenReceiveReadIndex != hydrogenReceiveWriteIndex; }); // Wait for data in circular buffer
         
         char* message = *hydrogenReceiveCircularBuffer[hydrogenReceiveReadIndex];
+        // if(hydrogenReceiveReadIndex % 10000 - 1 == 0)
         cout << message << endl;
         // Process message pointed by message
         // ...
@@ -465,6 +488,7 @@ void handleOxygenClient(SOCKET clientSocket){
         oxygenCv.wait(lock, []{ return oxygenReceiveReadIndex != oxygenReceiveWriteIndex; }); // Wait for data in circular buffer
         
         char* message = *oxygenReceiveCircularBuffer[oxygenReceiveReadIndex];
+        // if(oxygenReceiveReadIndex % 10000 - 1 == 0)
         cout << message << endl;
         // Process message pointed by message
         // ...
@@ -494,12 +518,14 @@ void handleOxygenClient(SOCKET clientSocket){
 
 void bondMolecules() {
     while(true){
+        // cout << "semaphore waiting" << endl;
         H_semaphore.wait();
         // cout << "Waiting for first H...\n";
         H_semaphore.wait();
         // cout << "Waiting for second H...\n";
         O_semaphore.wait();
         // cout << "Waiting for an O...\n";
+        // cout << "after semaphore" << endl;
 
         std::unique_lock<mutex> HArrayLock(hydrogenArrayMutex);
         Request H1 = hydrogenRequests[0];
@@ -519,6 +545,9 @@ void bondMolecules() {
         H2.isBonded = true;
         O.isBonded = true;
 
+        // cout << "sending bonds to buffer" << endl;
+        // cout << hHasAck << endl;
+
         log = createLog(H1);
         cout << log << endl;
 
@@ -527,7 +556,6 @@ void bondMolecules() {
         hIsSending = true;
         hydrogenSendBuff = log;
         hydrogenSendBuffSem.notify();
-        // send(H1.clientSocket, log.c_str(), log.size(), 0);
 
         log = createLog(O);
         cout << log << endl;
@@ -537,7 +565,6 @@ void bondMolecules() {
         oIsSending = true;
         oxygenSendBuff = log;
         oxygenSendBuffSem.notify();
-        // send(O.clientSocket, log.c_str(), log.size(), 0);
 
         log = createLog(H2);
         cout << log << endl;
@@ -547,7 +574,8 @@ void bondMolecules() {
         hIsSending = true;
         hydrogenSendBuff = log;
         hydrogenSendBuffSem.notify();
-        // send(H2.clientSocket, log.c_str(), log.size(), 0);
+
+        // cout << "bottom" << endl;
     }
 }
 
