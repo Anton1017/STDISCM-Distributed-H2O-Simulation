@@ -7,6 +7,7 @@
 #include <string>
 #include <ctime>
 #include <thread>
+#include <set>
 
 const int PORT = 6900;
 const int BUFFER_SIZE = 1024;
@@ -48,7 +49,7 @@ std::string getCurrentTime() {
     return std::string(buffer);
 }
 
-std::chrono::steady_clock::time_point receiveLogs(SOCKET sock, int size){
+std::chrono::steady_clock::time_point receiveLogs(SOCKET sock, int size, const std::set<int>& sentRequests, int &bondedOxygens){
     //auto start = std::chrono::steady_clock::now();
     int ctr = 0;
     int requestNumber = 0;
@@ -63,11 +64,16 @@ std::chrono::steady_clock::time_point receiveLogs(SOCKET sock, int size){
         std::string timestamp = currDate + " " + currTime;
        
         ctr++;
+        bondedOxygens++;
         //std::cout << buffer << std::endl;
         std::string log = "O" + std::to_string(requestNumber) + ", bonded, " + timestamp; 
 
+        if (sentRequests.find(requestNumber) == sentRequests.end()) {
+            std::cout << "Warning: O" << requestNumber << " was bonded without being requested." << std::endl;
+        }
+
         std::cout << log << std::endl;
-        std::cout << ctr << std::endl;
+        //std::cout << ctr << std::endl;
     
     
         if (ctr == size) {
@@ -117,6 +123,9 @@ int main() {
     std::string temp;
     char buffer[1024] = {0};
     int requestmsg = 0;
+
+    std::set<int> sentRequests;
+    int bondedOxygens = 0;
     while (std::getline(std::cin, temp))
     {
         if (temp != "Exit") {
@@ -148,17 +157,28 @@ int main() {
                 send(sock, log.c_str(), strlen(log.c_str()), 0);
             }
             */
+            bool duplicatesFound = false;
+            int duplicateCount = 0;
             auto start = std::chrono::steady_clock::now();
             std::chrono::steady_clock::time_point end;
-            std::thread receiveThread([&] {end = receiveLogs(sock, O_max);});
+            std::thread receiveThread([&] {end = receiveLogs(sock, O_max, sentRequests, bondedOxygens);});
 
             for (int i = 1; i <= oxygenListSize; i++) {
-                requestmsg = htonl(i);  // Convert to network byte order
+                if (sentRequests.find(i) != sentRequests.end()) {
+                    std::cerr << "Duplicate request detected for H" << i << ". Skipping." << std::endl;
+                    duplicatesFound = true;
+                    duplicateCount++;
+                    continue; // Skip sending this request
+                }
 
+                requestmsg = htonl(i);  // Convert to network byte order
+                
                 if (send(sock, (char*)&requestmsg, sizeof(requestmsg), 0) == SOCKET_ERROR) {
                     std::cerr << "Failed to send request: " << WSAGetLastError() << std::endl;
                     break;  
                 }
+
+                sentRequests.insert(i);
                 std::string currTime = getCurrentTime();
                 std::string currDate = getCurrentDate();
                 std::string log = "O" + std::to_string(i) + ", request, " +  currDate + " " + currTime;
@@ -184,8 +204,18 @@ int main() {
             // std::chrono::duration<double> elapsed_seconds = end - start;
             // std::cout << "Time elapsed: " << elapsed_seconds.count() << "s" << std::endl;
             receiveThread.join();
-            std::chrono::duration<double> elapsed_seconds = end - start;
 
+            int remainingOxygens = O_max - bondedOxygens;
+            // std::cout << "Number of bonded hydrogens: " << bondedHydrogens << std::endl;
+            if (remainingOxygens > 0) {
+                std::cerr << "Warning: " << remainingOxygens << " hydrogen(s) were not bonded." << std::endl;
+            }
+            if (!duplicatesFound) {
+                std::cout << "No duplicate requests found." << std::endl;
+            } else {
+                std::cout << "Number of duplicates: " << duplicateCount << std::endl;
+            }
+            std::chrono::duration<double> elapsed_seconds = end - start;
             std::cout << "Time elapsed: " << elapsed_seconds.count() << "s" << std::endl;
 
         }
