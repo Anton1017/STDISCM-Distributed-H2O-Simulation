@@ -167,10 +167,10 @@ int main() {
     string str;
 
     std::thread acceptClientsThread(acceptClients, serverSocket);
-    acceptClientsThread.detach();  // Detach the thread to allow it to run independently
+    acceptClientsThread.detach();  
 
     std::thread bondMoleculesThread(bondMolecules);
-    bondMoleculesThread.detach();  // For handling bonding of molecules
+    bondMoleculesThread.detach();  
 
     while(true) {
         std::cin >> str;
@@ -216,18 +216,13 @@ void acceptClients(SOCKET serverSocket) {
             std::thread hydrogenClientThread(handleHydrogenClient, clientSocket);
             hydrogenClientThread.detach();
             hydrogenSockets.push_back(clientSocket);
-
-            // Send a message to the connected client
-            //send(clientSocket, SERVER_ADDRESS, strlen(SERVER_ADDRESS), 0);
-        } else if(strcmp(buffer, "oxygen") == 0){
+        } 
+        else if(strcmp(buffer, "oxygen") == 0){
             std::cout << "Accepted oxygen connection from: " << inet_ntoa(clientAddr.sin_addr) << ":" << ntohs(clientAddr.sin_port) << std::endl;
             moleculeType = "oxygen";
             std::thread oxygenClientThread(handleOxygenClient, clientSocket);
             oxygenClientThread.detach();
             oxygenSockets.push_back(clientSocket);
-            
-            // Send a message to the connected client
-            //send(clientSocket, SERVER_ADDRESS, strlen(SERVER_ADDRESS), 0);
         }
 
     }
@@ -301,8 +296,6 @@ void handleHydrogenClient(SOCKET clientSocket){
             H_semaphore.notify();
             H_semaphore.notify();
         }
-        //HArrayLock.unlock();
-        
     }
 }
 
@@ -320,7 +313,6 @@ void handleOxygenClient(SOCKET clientSocket){
         string timestamp = currDate + " " + currTime;
         Request req = {"O" + to_string(requestNumber), timestamp, clientSocket};
 
-        //cout << "Received new oxygen request!\n" << endl;
         string log = createLog(req);
         cout << log << std::endl;
         std::unique_lock<mutex> OArrayLock(oxygenArrayMutex);
@@ -329,8 +321,6 @@ void handleOxygenClient(SOCKET clientSocket){
         if (oxygenRequests.size() >= 1){
             O_semaphore.notify();
         }
-        //OArrayLock.unlock();
-        
     } 
     
 }
@@ -354,7 +344,6 @@ void bondMolecules() {
         oxygenRequests.erase(oxygenRequests.begin());
         OArrayLock.unlock();
 
-        //cout << "Bonded: " << H1.molecule_name << " " << H2.molecule_name << " " << O.molecule_name << endl;
         string log;
         H1.isBonded = true;
         H2.isBonded = true;

@@ -40,14 +40,17 @@ std::string getCurrentTime() {
 }
 
 std::chrono::steady_clock::time_point receiveLogs(SOCKET sock, int size, const std::set<int>& sentRequests, int &bondedOxygens){
-    //auto start = std::chrono::steady_clock::now();
     int ctr = 0;
     int requestNumber = 0;
     while (true) {
-        //std::cout << "Listening for server responses: " << std::endl;
         char buffer[1024] = {0};
         int bytesReceived = recv(sock, reinterpret_cast<char*>(&requestNumber), sizeof(requestNumber), 0); 
         requestNumber = ntohl(requestNumber);
+
+        if (bytesReceived <= 0) {
+            // No more data to receive, break the loop
+            break;
+        }
 
         std::string currTime = getCurrentTime();
         std::string currDate = getCurrentDate();
@@ -55,25 +58,14 @@ std::chrono::steady_clock::time_point receiveLogs(SOCKET sock, int size, const s
        
         ctr++;
         bondedOxygens++;
-        //std::cout << buffer << std::endl;
-        //std::string log = "O" + std::to_string(requestNumber) + ", bonded, " + timestamp; 
-
-        if (sentRequests.find(requestNumber) == sentRequests.end()) {
+    
+        if (sentRequests.find(requestNumber) == sentRequests.end()) 
             std::cout << "Warning: O" << requestNumber << " was bonded without being requested." << std::endl;
-        }
-
-        //std::cout << log << std::endl;
-        //std::cout << ctr << std::endl;
-    
-    
-        if (ctr == size) {
+        
+        if (ctr == size) 
             break;
-        }
+        
     }
-    //auto end = std::chrono::steady_clock::now();
-
-    //std::chrono::duration<double> elapsed_seconds = end - start;
-
     return std::chrono::steady_clock::now();
 }
 
@@ -105,11 +97,11 @@ int main() {
         return 1;
     }
 
-    //Send identifier as oxygen client 
+    //Send identifier as oxygen 
     std::string identifier = "oxygen";
     send(sock, identifier.c_str(), identifier.size(),  0);
     
-    //User input
+    // User input
     std::string temp;
     char buffer[1024] = {0};
     int requestmsg = 0;
@@ -134,23 +126,16 @@ int main() {
                 O_symbol = "O";
             }
             
-            //Send the size of the list
             int oxygenListSize = oxygen_List.size();
-            //send(sock, reinterpret_cast<char*>(&oxygenListSize), sizeof(oxygenListSize), 0);
-            //Send the list itself
-            /*
-            for(const std::string& oxygen : oxygen_List) {
-                std::string currTime = getCurrentTime();
-                std::string currDate = getCurrentDate();
-                std::string log = oxygen + ", request, " +  currDate + " " + currTime;
-                std::cout << log << std::endl;
-                send(sock, log.c_str(), strlen(log.c_str()), 0);
-            }
-            */
+         
             bool duplicatesFound = false;
             int duplicateCount = 0;
+
+            // Start timer
             auto start = std::chrono::steady_clock::now();
             std::chrono::steady_clock::time_point end;
+
+            // Start Receive thread
             std::thread receiveThread([&] {end = receiveLogs(sock, O_max, sentRequests, bondedOxygens);});
 
             for (int i = 1; i <= oxygenListSize; i++) {
@@ -171,32 +156,13 @@ int main() {
                 sentRequests.insert(i);
                 std::string currTime = getCurrentTime();
                 std::string currDate = getCurrentDate();
-                //std::string log = "O" + std::to_string(i) + ", request, " +  currDate + " " + currTime;
-                //std::cout << log << std::endl;
             }
 
-            // std::cout << "Enter end point: ";
-            // std::string endPoint;
-            // std::getline(std::cin, endPoint);
 
-            // std::cout << "Enter number of threads: ";
-            // std::string numThreads;
-            // std::getline(std::cin, numThreads);
-            // std::string message = startPoint + "," + endPoint + "," + numThreads;
-
-            //start timer
-            // auto start = std::chrono::steady_clock::now();
-            // send(sock, message.c_str(), message.size(),  0);
-
-
-            //end timer
-            // auto end = std::chrono::steady_clock::now();
-            // std::chrono::duration<double> elapsed_seconds = end - start;
-            // std::cout << "Time elapsed: " << elapsed_seconds.count() << "s" << std::endl;
+            // End timer
+            // Get thread result (end time)
             receiveThread.join();
-
             int remainingOxygens = O_max - bondedOxygens;
-            // std::cout << "Number of bonded hydrogens: " << bondedHydrogens << std::endl;
             if (remainingOxygens > 0) {
                 std::cerr << "Warning: " << remainingOxygens << " hydrogen(s) were not bonded." << std::endl;
             }
@@ -207,7 +173,6 @@ int main() {
             }
             std::chrono::duration<double> elapsed_seconds = end - start;
             std::cout << "Time elapsed: " << elapsed_seconds.count() << "s" << std::endl;
-
         }
         else {
             send(sock, temp.c_str(), temp.size(),  0);

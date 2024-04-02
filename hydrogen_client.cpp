@@ -22,8 +22,7 @@ std::string getCurrentDate() {
     
     char buffer[20];
     std::strftime(buffer, 20, "%Y-%m-%d", timeInfo);
-    
-    // Convert the buffer to a string
+
     return std::string(buffer);
 }
 
@@ -41,11 +40,9 @@ std::string getCurrentTime() {
 }
 
 std::chrono::steady_clock::time_point receiveLogs(SOCKET sock, int size, const std::set<int>& sentRequests, int &bondedHydrogens){
-    //auto start = std::chrono::steady_clock::now();
     int ctr = 0;
     int requestNumber = 0;
     while (true) {
-        //std::cout << "Listening for server responses: " << std::endl;
         char buffer[1024] = {0};
         int bytesReceived = recv(sock, reinterpret_cast<char*>(&requestNumber), sizeof(requestNumber), 0); 
         requestNumber = ntohl(requestNumber);
@@ -61,24 +58,14 @@ std::chrono::steady_clock::time_point receiveLogs(SOCKET sock, int size, const s
        
         ctr++;
         bondedHydrogens++;
-        //std::cout << buffer << std::endl;
-        //std::string log = "H" + std::to_string(requestNumber) + ", bonded, " + timestamp; 
 
-        if (sentRequests.find(requestNumber) == sentRequests.end()) {
+        if (sentRequests.find(requestNumber) == sentRequests.end()) 
             std::cout << "Warning: H" << requestNumber << " was bonded without being requested." << std::endl;
-        }
-
-        //std::cout << log << std::endl;
-        //std::cout << ctr << std::endl;
-    
-        if (ctr == size) {
+        
+        if (ctr == size) 
             break;
-        }
+        
     }
-    //auto end = std::chrono::steady_clock::now();
-
-    //std::chrono::duration<double> elapsed_seconds = end - start;
-
     return std::chrono::steady_clock::now();
 }
 
@@ -110,11 +97,11 @@ int main() {
         return 1;
     }
 
-    //Send identifier as hydrogen
+    // Send identifier as hydrogen
     std::string identifier = "hydrogen";
     send(sock, identifier.c_str(), identifier.size(),  0); 
 
-    //User input
+    // User input
     std::string temp;
     char buffer[1024] = {0};
     int requestmsg = 0;
@@ -131,10 +118,6 @@ int main() {
 
             int H_max = std::stoi(num_Hydrogen);
 
-            //std::thread receiveLogsthread(receiveLogs, sock, H_max);
-            //auto receiveAsync = std::async(receiveLogs, sock, H_max);
-            //receiveLogsthread.detach();
-
             std::vector<std::string> hydrogen_List;
             std::string H_symbol = "H"; 
             for (int i = 1; i < H_max + 1; i++){
@@ -144,27 +127,16 @@ int main() {
                 H_symbol = "H";
             }
             
-
-            //send the size of the list 
             int hydrogenListSize = hydrogen_List.size();
-            //send(sock, reinterpret_cast<char*>(&hydrogenListSize), sizeof(hydrogenListSize), 0);
-
-            // send the list itself
-            /*
-            for(const std::string& hydrogen : hydrogen_List) {
-                std::string currTime = getCurrentTime();
-                std::string currDate = getCurrentDate();
-                std::string log = hydrogen + ", request, " +  currDate + " " + currTime;
-                std::cout << log << std::endl;
-                send(sock, log.c_str(), strlen(log.c_str()), 0);
-            }
-            */
 
             bool duplicatesFound = false;
             int duplicateCount = 0;
-            //start timer
+
+            // Start timer
             auto start = std::chrono::steady_clock::now();
             std::chrono::steady_clock::time_point end;
+
+            // Start Receive thread
             std::thread receiveThread([&] {end = receiveLogs(sock, H_max, sentRequests, bondedHydrogens);});
 
             for (int i = 1; i <= hydrogenListSize; i++) {
@@ -184,19 +156,13 @@ int main() {
                 sentRequests.insert(i);
                 std::string currTime = getCurrentTime();
                 std::string currDate = getCurrentDate();
-                //std::string log = "H" + std::to_string(i) + ", request, " +  currDate + " " + currTime;
-                //std::cout << log << std::endl;
             }
             
             
-            //end timer
-            // auto end = std::chrono::steady_clock::now();
-            // std::chrono::duration<double> elapsed_seconds = end - start;
-            // std::cout << "Time elapsed: " << elapsed_seconds.count() << "s" << std::endl;
-            //auto end = receiveAsync.get();
+            // End timer
+            // Get thread result (end time)
             receiveThread.join();
             int remainingHydrogens = H_max - bondedHydrogens;
-            // std::cout << "Number of bonded hydrogens: " << bondedHydrogens << std::endl;
             if (remainingHydrogens > 0) {
                 std::cerr << "Warning: " << remainingHydrogens << " hydrogen(s) were not bonded." << std::endl;
             }
