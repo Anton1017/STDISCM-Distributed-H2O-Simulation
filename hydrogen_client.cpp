@@ -14,17 +14,13 @@ const int BUFFER_SIZE = 1024;
 const char* SERVER_ADDRESS = "127.0.0.1";
 
 std::string getCurrentDate() {
-    // Get the current time
     auto now = std::chrono::system_clock::now();
     
-    // Convert the current time to a time_t object
     std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
 
-    // Convert the time_t object to a tm struct representing the current time
     std::tm* timeInfo = std::localtime(&currentTime);
     
-    // Format the date
-    char buffer[20]; // Buffer to store the formatted date
+    char buffer[20];
     std::strftime(buffer, 20, "%Y-%m-%d", timeInfo);
     
     // Convert the buffer to a string
@@ -32,20 +28,15 @@ std::string getCurrentDate() {
 }
 
 std::string getCurrentTime() {
-    // Get the current time
     auto now = std::chrono::system_clock::now();
     
-    // Convert the current time to a time_t object
     std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
 
-    // Convert the time_t object to a tm struct representing the current time
     std::tm* timeInfo = std::localtime(&currentTime);
     
-    // Format the time
-    char buffer[9]; // Buffer to store the formatted time (HH:MM:SS)
+    char buffer[9];
     std::strftime(buffer, 9, "%H:%M:%S", timeInfo);
     
-    // Convert the buffer to a string
     return std::string(buffer);
 }
 
@@ -71,13 +62,13 @@ std::chrono::steady_clock::time_point receiveLogs(SOCKET sock, int size, const s
         ctr++;
         bondedHydrogens++;
         //std::cout << buffer << std::endl;
-        std::string log = "H" + std::to_string(requestNumber) + ", bonded, " + timestamp; 
+        //std::string log = "H" + std::to_string(requestNumber) + ", bonded, " + timestamp; 
 
         if (sentRequests.find(requestNumber) == sentRequests.end()) {
             std::cout << "Warning: H" << requestNumber << " was bonded without being requested." << std::endl;
         }
 
-        std::cout << log << std::endl;
+        //std::cout << log << std::endl;
         //std::cout << ctr << std::endl;
     
         if (ctr == size) {
@@ -193,8 +184,8 @@ int main() {
                 sentRequests.insert(i);
                 std::string currTime = getCurrentTime();
                 std::string currDate = getCurrentDate();
-                std::string log = "H" + std::to_string(i) + ", request, " +  currDate + " " + currTime;
-                std::cout << log << std::endl;
+                //std::string log = "H" + std::to_string(i) + ", request, " +  currDate + " " + currTime;
+                //std::cout << log << std::endl;
             }
             
             
