@@ -56,11 +56,8 @@ std::chrono::steady_clock::time_point receiveLogs(SOCKET sock, int size){
         //std::cout << "Listening for server responses: " << std::endl;
         char buffer[1024] = {0};
         int bytesReceived = recv(sock, reinterpret_cast<char*>(&requestNumber), sizeof(requestNumber), 0); 
-        if (bytesReceived <= 0) {
-            std::cerr << "Error receiving data: " << WSAGetLastError() << std::endl;
-            break; // Handle error appropriately
-        }
         requestNumber = ntohl(requestNumber);
+
         std::string currTime = getCurrentTime();
         std::string currDate = getCurrentDate();
         std::string timestamp = currDate + " " + currTime;
@@ -70,8 +67,8 @@ std::chrono::steady_clock::time_point receiveLogs(SOCKET sock, int size){
         std::string log = "H" + std::to_string(requestNumber) + ", bonded, " + timestamp; 
 
         std::cout << log << std::endl;
-        //std::cout << ctr << std::endl;
-       
+        std::cout << ctr << std::endl;
+    
     
         if (ctr == size) {
             break;

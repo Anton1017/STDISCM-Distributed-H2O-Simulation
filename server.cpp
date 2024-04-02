@@ -237,7 +237,7 @@ void acceptClients(SOCKET serverSocket) {
             hydrogenSockets.push_back(clientSocket);
 
             // Send a message to the connected client
-            //send(clientSocket, SERVER_ADDRESS, strlen(SERVER_ADDRESS), 0);
+            send(clientSocket, SERVER_ADDRESS, strlen(SERVER_ADDRESS), 0);
         } else if(strcmp(buffer, "oxygen") == 0){
             std::cout << "Accepted oxygen connection from: " << inet_ntoa(clientAddr.sin_addr) << ":" << ntohs(clientAddr.sin_port) << std::endl;
             moleculeType = "oxygen";
@@ -246,7 +246,7 @@ void acceptClients(SOCKET serverSocket) {
             oxygenSockets.push_back(clientSocket);
             
             // Send a message to the connected client
-            //send(clientSocket, SERVER_ADDRESS, strlen(SERVER_ADDRESS), 0);
+            send(clientSocket, SERVER_ADDRESS, strlen(SERVER_ADDRESS), 0);
         }
 
     }
